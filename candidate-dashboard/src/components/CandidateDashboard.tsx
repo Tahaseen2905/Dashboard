@@ -14,7 +14,7 @@ import {
     Pie,
     Legend
 } from 'recharts';
-import { Briefcase, MapPin, Users, Code, Activity, Search, Sun, Moon, Building, Info } from 'lucide-react';
+import { Briefcase, MapPin, Users, Code, Search, Sun, Moon, Building, Info } from 'lucide-react';
 import j2wLogo from '../assets/j2w.svg';
 
 interface CandidateData {
@@ -114,8 +114,7 @@ export default function CandidateDashboard() {
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [selectedCandidate, setSelectedCandidate] = useState<CandidateData | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
+
 
     // Add styles for icon animation
     const styles = `
@@ -339,22 +338,6 @@ export default function CandidateDashboard() {
     const totalCandidates = data.length;
     const uniqueLocations = allLocationData.length;
     const uniqueSkills = allSkillsData.length;
-
-    // Pagination
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10;
-    const totalPages = Math.ceil(totalCandidates / itemsPerPage);
-
-    const paginatedData = data.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    );
-
-    const goToPage = (page: number) => {
-        if (page >= 1 && page <= totalPages) {
-            setCurrentPage(page);
-        }
-    };
 
     if (loading && data.length === 0) {
         // Allow rendering even if loading, handled by internal spinners
@@ -883,95 +866,7 @@ export default function CandidateDashboard() {
                 </div>
             </div>
 
-            {/* Candidate Details Modal */}
-            {
-                isModalOpen && selectedCandidate && (
-                    <div style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        zIndex: 1000,
-                        backdropFilter: 'blur(4px)'
-                    }} onClick={() => setIsModalOpen(false)}>
-                        <div style={{
-                            backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
-                            color: isDarkMode ? '#f8fafc' : '#1e293b',
-                            borderRadius: '12px',
-                            width: '90%',
-                            maxWidth: '800px',
-                            maxHeight: '90vh',
-                            overflowY: 'auto',
-                            padding: '2rem',
-                            position: 'relative',
-                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
-                        }} onClick={e => e.stopPropagation()}>
-                            <button
-                                onClick={() => setIsModalOpen(false)}
-                                style={{
-                                    position: 'absolute',
-                                    top: '1rem',
-                                    right: '1rem',
-                                    background: 'transparent',
-                                    border: 'none',
-                                    color: isDarkMode ? '#94a3b8' : '#64748b',
-                                    fontSize: '1.5rem',
-                                    cursor: 'pointer',
-                                    padding: '0.5rem',
-                                    lineHeight: 1
-                                }}
-                            >
-                                ×
-                            </button>
 
-                            <h2 style={{
-                                marginTop: 0,
-                                marginBottom: '1.5rem',
-                                fontSize: '1.5rem',
-                                borderBottom: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`,
-                                paddingBottom: '1rem'
-                            }}>
-                                Candidate Details
-                            </h2>
-
-                            <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-                                gap: '1.5rem'
-                            }}>
-                                {Object.entries(selectedCandidate).map(([key, value]) => {
-                                    // Skip internal/complex objects if any, keep simple values
-                                    if (typeof value === 'object' && value !== null) return null;
-                                    return (
-                                        <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                            <span style={{
-                                                fontSize: '0.75rem',
-                                                textTransform: 'uppercase',
-                                                letterSpacing: '0.05em',
-                                                color: isDarkMode ? '#94a3b8' : '#64748b',
-                                                fontWeight: 600
-                                            }}>
-                                                {key}
-                                            </span>
-                                            <span style={{
-                                                fontSize: '1rem',
-                                                color: isDarkMode ? '#f8fafc' : '#1e293b'
-                                            }}>
-                                                {String(value || 'N/A')}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
 
             {/* Data Table */}
             {/* <div className="glass-card" style={{ marginTop: '2rem' }}>
