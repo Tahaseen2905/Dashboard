@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
 import {
@@ -13,7 +14,8 @@ import {
     Pie,
     Legend
 } from 'recharts';
-import { Users, MapPin, Code, Activity } from 'lucide-react';
+import { Briefcase, MapPin, Users, Code, Activity, Search, Sun, Moon, Building, Info } from 'lucide-react';
+import j2wLogo from '../assets/j2w.svg';
 
 interface CandidateData {
     'Employee ID': string;
@@ -34,7 +36,52 @@ interface ChartData {
 
 const COLORS = ['#60a5fa', '#a78bfa', '#34d399', '#f472b6', '#fbbf24', '#f87171'];
 
+const InfoTooltip = ({ text }: { text: string }) => {
+    const [isVisible, setIsVisible] = useState(false);
+    return (
+        <div
+            style={{ position: 'relative', display: 'inline-flex', marginLeft: '0.5rem', cursor: 'help', verticalAlign: 'middle' }}
+            onMouseEnter={() => setIsVisible(true)}
+            onMouseLeave={() => setIsVisible(false)}
+        >
+            <Info size={16} color="#94a3b8" />
+            {isVisible && (
+                <div style={{
+                    position: 'absolute',
+                    bottom: '100%',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    marginBottom: '0.5rem',
+                    padding: '0.5rem 0.75rem',
+                    background: 'rgba(15, 23, 42, 0.9)',
+                    color: '#fff',
+                    fontSize: '0.75rem',
+                    borderRadius: '6px',
+                    whiteSpace: 'nowrap',
+                    zIndex: 50,
+                    pointerEvents: 'none',
+                    backdropFilter: 'blur(4px)',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    border: '1px solid rgba(255,255,255,0.1)'
+                }}>
+                    {text}
+                    <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: '50%',
+                        marginLeft: '-4px',
+                        borderWidth: '4px',
+                        borderStyle: 'solid',
+                        borderColor: 'rgba(15, 23, 42, 0.9) transparent transparent transparent'
+                    }} />
+                </div>
+            )}
+        </div>
+    );
+};
+
 export default function CandidateDashboard() {
+    const navigate = useNavigate();
     const [data, setData] = useState<CandidateData[]>([]);
     const [allLocationData, setAllLocationData] = useState<ChartData[]>([]);
     const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
@@ -309,12 +356,9 @@ export default function CandidateDashboard() {
         }
     };
 
-    if (loading) return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: '1rem' }}>
-            <div className="loading-spinner"></div>
-            <p style={{ color: '#94a3b8' }}>Loading candidate data...</p>
-        </div>
-    );
+    if (loading && data.length === 0) {
+        // Allow rendering even if loading, handled by internal spinners
+    }
 
     if (error) return (
         <div style={{ padding: '2rem', textAlign: 'center', color: '#f87171' }}>
@@ -323,219 +367,292 @@ export default function CandidateDashboard() {
         </div>
     );
 
-    return (
-        <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>
-                    Candidate Dashboard
-                </h1>
-                <button
-                    onClick={() => setIsDarkMode(!isDarkMode)}
-                    style={{
-                        background: 'transparent',
-                        border: '1px solid var(--card-border)',
-                        color: 'var(--text-color)',
-                        padding: '0.5rem 1rem',
-                        borderRadius: '8px',
+    const renderFilterDropdown = (
+        label: string,
+        data: ChartData[],
+        selected: string[],
+        toggleSelection: (name: string) => void,
+        resetSelection: () => void,
+        search: string,
+        setSearch: (s: string) => void,
+        isOpen: boolean,
+        setIsOpen: (o: boolean) => void
+    ) => (
+        <div style={{ position: 'relative', flex: 1, minWidth: '180px' }}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                style={{
+                    background: isDarkMode ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.8)',
+                    color: isDarkMode ? '#f8fafc' : '#1e293b',
+                    border: '1px solid var(--card-border)',
+                    borderRadius: '8px',
+                    padding: '0.75rem 1rem',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    width: '100%',
+                    justifyContent: 'space-between',
+                    backdropFilter: 'blur(8px)',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontWeight: 500 }}>{label}</span>
+                    {selected.length > 0 && (
+                        <span style={{
+                            background: '#3b82f6',
+                            color: 'white',
+                            fontSize: '0.7rem',
+                            padding: '0.1rem 0.4rem',
+                            borderRadius: '999px',
+                            minWidth: '1.2rem',
+                            textAlign: 'center'
+                        }}>
+                            {selected.length}
+                        </span>
+                    )}
+                </div>
+                <span style={{ fontSize: '0.75rem', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
+            </button>
+
+            {isOpen && (
+                <div style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 0.5rem)',
+                    left: 0,
+                    marginBottom: '1rem',
+                    background: isDarkMode ? '#1e293b' : '#ffffff',
+                    border: '1px solid var(--card-border)',
+                    borderRadius: '12px',
+                    padding: '0.5rem',
+                    zIndex: 1000,
+                    width: '100%',
+                    minWidth: '200px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                    maxHeight: '300px',
+                    overflowY: 'auto'
+                }}>
+                    <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--card-border)' }}>
+                        <input
+                            type="text"
+                            placeholder={`Search ${label}...`}
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '8px 12px',
+                                borderRadius: '6px',
+                                border: '1px solid var(--card-border)',
+                                background: isDarkMode ? '#0f172a' : '#f1f5f9',
+                                color: isDarkMode ? '#f8fafc' : '#1e293b',
+                                fontSize: '0.875rem',
+                                outline: 'none'
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            autoFocus
+                        />
+                    </div>
+                    <div style={{
+                        padding: '0.5rem',
+                        borderBottom: '1px solid var(--card-border)',
+                        marginBottom: '0.25rem',
+                        fontSize: '0.75rem',
+                        color: '#ef4444',
                         cursor: 'pointer',
-                        fontSize: '1rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        transition: 'all 0.3s ease'
+                        textAlign: 'center',
+                        fontWeight: 500
                     }}
-                >
-                    {isDarkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
-                </button>
+                        onClick={() => {
+                            resetSelection();
+                            setSearch('');
+                            setIsOpen(false);
+                        }}
+                    >
+                        Clear Filters
+                    </div>
+                    {data.filter(item => item.name.toLowerCase().includes(search.toLowerCase())).map(item => (
+                        <div
+                            key={item.name}
+                            onClick={() => toggleSelection(item.name)}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.75rem',
+                                padding: '0.5rem 0.75rem',
+                                cursor: 'pointer',
+                                color: isDarkMode ? '#f8fafc' : '#1e293b',
+                                fontSize: '0.875rem',
+                                borderRadius: '6px',
+                                transition: 'background 0.2s',
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = isDarkMode ? '#334155' : '#f1f5f9'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                            <input
+                                type="checkbox"
+                                checked={selected.includes(item.name)}
+                                readOnly
+                                style={{ cursor: 'pointer', accentColor: '#3b82f6' }}
+                            />
+                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
+                                {item.name || 'Unknown'}
+                            </span>
+                            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{item.count}</span>
+                        </div>
+                    ))}
+                    {data.length === 0 && (
+                        <div style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>
+                            No results found
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+
+    return (
+        <div style={{ padding: '1rem', fontFamily: "'Inter', sans-serif" }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <img src={j2wLogo} alt="J2W Logo" style={{ height: '40px', width: 'auto', marginRight: '0.5rem' }} />
+                    <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>
+                        Candidate Analytics
+                    </h1>
+                </div>
+
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <button
+                        onClick={() => navigate('/candidate-details')}
+                        style={{
+                            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+                            color: 'white',
+                            border: 'none',
+                            padding: '1.0rem 1.5rem',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            fontWeight: 600,
+                            boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.5)',
+                            transition: 'all 0.3s ease'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                    >
+                        Candidate Details
+                    </button>
+
+                    <button
+                        onClick={() => setIsDarkMode(!isDarkMode)}
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'var(--text-color)',
+                            padding: '0.5rem',
+                            borderRadius: '50%',
+                            cursor: 'pointer',
+                            fontSize: '1.25rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.3s ease',
+                            width: '40px',
+                            height: '40px'
+                        }}
+                        title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                    >
+                        {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                    </button>
+                </div>
+            </div>
+
+            {/* Global Filter Bar */}
+            <div className="glass-card" style={{ marginBottom: '2rem', padding: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', width: '100%', position: 'relative', zIndex: 50, overflow: 'visible' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', fontSize: '0.875rem', fontWeight: 600, marginRight: '0.5rem' }}>
+                    <Search size={16} />
+                    <span>FILTERS:</span>
+                </div>
+                {renderFilterDropdown('Clients', allClientData, selectedClients, toggleClientSelection, () => setSelectedClients([]), clientSearch, setClientSearch, isDropdownOpen, setIsDropdownOpen)}
+                {renderFilterDropdown('Roles', allRoleData, selectedRoles, toggleRoleSelection, () => setSelectedRoles([]), roleSearch, setRoleSearch, isRoleDropdownOpen, setIsRoleDropdownOpen)}
+                {renderFilterDropdown('Locations', allLocationData, selectedLocations, toggleLocationSelection, () => setSelectedLocations([]), locationSearch, setLocationSearch, isLocationDropdownOpen, setIsLocationDropdownOpen)}
+                {renderFilterDropdown('Skills', allSkillsData, selectedSkills, toggleSkillSelection, () => setSelectedSkills([]), skillSearch, setSkillSearch, isSkillDropdownOpen, setIsSkillDropdownOpen)}
+                {renderFilterDropdown('Industry', allVerticalData, selectedVerticals, toggleVerticalSelection, () => setSelectedVerticals([]), verticalSearch, setVerticalSearch, isVerticalDropdownOpen, setIsVerticalDropdownOpen)}
             </div>
 
             {/* Metrics Cards */}
             <style>{styles}</style>
-            <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginBottom: '2rem' }}>
-                <div className="glass-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', transition: 'transform 0.2s', cursor: 'pointer' }}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-                    <div>
-                        <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Total Candidates</p>
-                        <div className="stat-value">{totalCandidates}</div>
+            <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', marginBottom: '2rem', gap: '1.5rem' }}>
+                {/* Total Candidates */}
+                <div className="metric-card">
+                    <div className="metric-content">
+                        <span className="metric-label">Total Candidates</span>
+                        <div className="metric-value">{totalCandidates}</div>
                     </div>
-                    <div className="icon-wrapper" style={{
-                        background: 'rgba(59, 130, 246, 0.1)',
-                        padding: '1rem',
-                        borderRadius: '50%',
-                        color: '#3b82f6',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}>
-                        <Users size={24} />
+                    <div className="metric-icon-container" style={{ background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.05) 100%)', color: '#3b82f6' }}>
+                        <Users size={28} strokeWidth={2} />
                     </div>
                 </div>
-                <div className="glass-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', transition: 'transform 0.2s', cursor: 'pointer' }}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-                    <div>
-                        <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Unique Locations</p>
-                        <div className="stat-value">{uniqueLocations}</div>
+
+                {/* Unique Locations */}
+                <div className="metric-card">
+                    <div className="metric-content">
+                        <span className="metric-label">Unique Locations</span>
+                        <div className="metric-value">{uniqueLocations}</div>
                     </div>
-                    <div className="icon-wrapper" style={{
-                        background: 'rgba(167, 139, 250, 0.1)',
-                        padding: '1rem',
-                        borderRadius: '50%',
-                        color: '#a78bfa',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}>
-                        <MapPin size={24} />
+                    <div className="metric-icon-container" style={{ background: 'linear-gradient(135deg, rgba(167, 139, 250, 0.2) 0%, rgba(167, 139, 250, 0.05) 100%)', color: '#a78bfa' }}>
+                        <MapPin size={28} strokeWidth={2} />
                     </div>
                 </div>
-                <div className="glass-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', transition: 'transform 0.2s', cursor: 'pointer' }}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-                    <div>
-                        <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Unique Skills</p>
-                        <div className="stat-value">{uniqueSkills}</div>
+
+                {/* Unique Skills */}
+                <div className="metric-card">
+                    <div className="metric-content">
+                        <span className="metric-label">Unique Skills</span>
+                        <div className="metric-value">{uniqueSkills}</div>
                     </div>
-                    <div className="icon-wrapper" style={{
-                        background: 'rgba(52, 211, 153, 0.1)',
-                        padding: '1rem',
-                        borderRadius: '50%',
-                        color: '#34d399',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}>
-                        <Code size={24} />
+                    <div className="metric-icon-container" style={{ background: 'linear-gradient(135deg, rgba(52, 211, 153, 0.2) 0%, rgba(52, 211, 153, 0.05) 100%)', color: '#34d399' }}>
+                        <Code size={28} strokeWidth={2} />
                     </div>
                 </div>
-                <div className="glass-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', transition: 'transform 0.2s', cursor: 'pointer' }}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-                    <div>
-                        <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Processing Status</p>
-                        <div className="stat-value" style={{ fontSize: '1.5rem', color: '#34d399', WebkitTextFillColor: '#34d399' }}>Active</div>
+
+                {/* Unique Roles */}
+                <div className="metric-card">
+                    <div className="metric-content">
+                        <span className="metric-label">Unique Roles</span>
+                        <div className="metric-value">{allRoleData.length}</div>
                     </div>
-                    <div className="icon-wrapper" style={{
-                        background: 'rgba(244, 114, 182, 0.1)',
-                        padding: '1rem',
-                        borderRadius: '50%',
-                        color: '#f472b6',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}>
-                        <Activity size={24} />
+                    <div className="metric-icon-container" style={{ background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(251, 191, 36, 0.05) 100%)', color: '#fbbf24' }}>
+                        <Briefcase size={28} strokeWidth={2} />
+                    </div>
+                </div>
+
+                {/* Unique Clients */}
+                <div className="metric-card">
+                    <div className="metric-content">
+                        <span className="metric-label">Unique Clients</span>
+                        <div className="metric-value">{allClientData.length}</div>
+                    </div>
+                    <div className="metric-icon-container" style={{ background: 'linear-gradient(135deg, rgba(244, 63, 94, 0.2) 0%, rgba(244, 63, 94, 0.05) 100%)', color: '#f43f5e' }}>
+                        <Building size={28} strokeWidth={2} />
                     </div>
                 </div>
             </div>
 
+
             <div className="dashboard-grid">
                 {/* Client Chart */}
                 <div className="glass-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', position: 'relative' }}>
-                        <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Top Clients</h2>
-
-                        {/* Custom Multi-Select Dropdown */}
-                        <div style={{ position: 'relative' }}>
-                            <button
-                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                style={{
-                                    background: isDarkMode ? '#1e293b' : '#ffffff',
-                                    color: isDarkMode ? '#f8fafc' : '#1e293b',
-                                    border: isDarkMode ? '1px solid #334155' : '1px solid #cbd5e1',
-                                    borderRadius: '4px',
-                                    padding: '0.25rem 0.75rem',
-                                    fontSize: '0.875rem',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem'
-                                }}
-                            >
-                                {selectedClients.length === 0 ? 'Top 5 (Default)' : `${selectedClients.length} Selected`}
-                                <span style={{ fontSize: '0.75rem' }}>▼</span>
-                            </button>
-
-                            {isDropdownOpen && (
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '100%',
-                                    right: 0,
-                                    marginTop: '0.5rem',
-                                    background: isDarkMode ? '#1e293b' : '#ffffff',
-                                    border: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0',
-                                    borderRadius: '8px',
-                                    padding: '0.5rem',
-                                    zIndex: 50,
-                                    width: '200px',
-                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                                    maxHeight: '300px',
-                                    overflowY: 'auto'
-                                }}>
-                                    <div style={{
-                                        padding: '0.5rem',
-                                        borderBottom: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0',
-                                        marginBottom: '0.5rem',
-                                        fontSize: '0.75rem',
-                                        color: isDarkMode ? '#94a3b8' : '#64748b',
-                                        cursor: 'pointer',
-                                        textAlign: 'center'
-                                    }}
-                                        onClick={() => {
-                                            setSelectedClients([]);
-                                            setClientSearch('');
-                                            setIsDropdownOpen(false);
-                                        }}
-                                    >
-                                        Reset to Top 5
-                                    </div>
-                                    <div style={{ padding: '0.5rem', borderBottom: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
-                                        <input
-                                            type="text"
-                                            placeholder="Search Clients..."
-                                            value={clientSearch}
-                                            onChange={(e) => setClientSearch(e.target.value)}
-                                            style={{
-                                                width: '100%',
-                                                padding: '4px 8px',
-                                                borderRadius: '4px',
-                                                border: isDarkMode ? '1px solid #475569' : '1px solid #cbd5e1',
-                                                background: isDarkMode ? '#0f172a' : '#ffffff',
-                                                color: isDarkMode ? '#f8fafc' : '#1e293b',
-                                                fontSize: '0.875rem'
-                                            }}
-                                            onClick={(e) => e.stopPropagation()}
-                                        />
-                                    </div>
-                                    {allClientData.filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase())).map(client => (
-                                        <div
-                                            key={client.name}
-                                            onClick={() => toggleClientSelection(client.name)}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.5rem',
-                                                padding: '0.25rem',
-                                                cursor: 'pointer',
-                                                color: isDarkMode ? '#f8fafc' : '#1e293b',
-                                                fontSize: '0.875rem'
-                                            }}
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedClients.includes(client.name)}
-                                                readOnly
-                                                style={{ cursor: 'pointer' }}
-                                            />
-                                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                {client.name}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                    <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Top Clients</h2>
+                            <InfoTooltip text="Candidates grouped by their associated client companies." />
                         </div>
+                        <p style={{ fontSize: '0.875rem', color: '#94a3b8', margin: '0.25rem 0 0 0' }}>Displaying top 5 clients by default</p>
                     </div>
                     <div className="chart-container">
                         <ResponsiveContainer width="100%" height="100%">
@@ -560,109 +677,12 @@ export default function CandidateDashboard() {
 
                 {/* Role Chart */}
                 <div className="glass-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', position: 'relative' }}>
-                        <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Top Roles</h2>
-
-                        {/* Custom Multi-Select Dropdown for Roles */}
-                        <div style={{ position: 'relative' }}>
-                            <button
-                                onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                                style={{
-                                    background: isDarkMode ? '#1e293b' : '#ffffff',
-                                    color: isDarkMode ? '#f8fafc' : '#1e293b',
-                                    border: isDarkMode ? '1px solid #334155' : '1px solid #cbd5e1',
-                                    borderRadius: '4px',
-                                    padding: '0.25rem 0.75rem',
-                                    fontSize: '0.875rem',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem'
-                                }}
-                            >
-                                {selectedRoles.length === 0 ? 'Top 5 (Default)' : `${selectedRoles.length} Selected`}
-                                <span style={{ fontSize: '0.75rem' }}>▼</span>
-                            </button>
-
-                            {isRoleDropdownOpen && (
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '100%',
-                                    right: 0,
-                                    marginTop: '0.5rem',
-                                    background: isDarkMode ? '#1e293b' : '#ffffff',
-                                    border: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0',
-                                    borderRadius: '8px',
-                                    padding: '0.5rem',
-                                    zIndex: 50,
-                                    width: '200px',
-                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                                    maxHeight: '300px',
-                                    overflowY: 'auto'
-                                }}>
-                                    <div style={{
-                                        padding: '0.5rem',
-                                        borderBottom: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0',
-                                        marginBottom: '0.5rem',
-                                        fontSize: '0.75rem',
-                                        color: isDarkMode ? '#94a3b8' : '#64748b',
-                                        cursor: 'pointer',
-                                        textAlign: 'center'
-                                    }}
-                                        onClick={() => {
-                                            setSelectedRoles([]);
-                                            setRoleSearch('');
-                                            setIsRoleDropdownOpen(false);
-                                        }}
-                                    >
-                                        Reset to Top 5
-                                    </div>
-                                    <div style={{ padding: '0.5rem', borderBottom: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
-                                        <input
-                                            type="text"
-                                            placeholder="Search Roles..."
-                                            value={roleSearch}
-                                            onChange={(e) => setRoleSearch(e.target.value)}
-                                            style={{
-                                                width: '100%',
-                                                padding: '4px 8px',
-                                                borderRadius: '4px',
-                                                border: isDarkMode ? '1px solid #475569' : '1px solid #cbd5e1',
-                                                background: isDarkMode ? '#0f172a' : '#ffffff',
-                                                color: isDarkMode ? '#f8fafc' : '#1e293b',
-                                                fontSize: '0.875rem'
-                                            }}
-                                            onClick={(e) => e.stopPropagation()}
-                                        />
-                                    </div>
-                                    {allRoleData.filter(r => r.name.toLowerCase().includes(roleSearch.toLowerCase())).map(role => (
-                                        <div
-                                            key={role.name}
-                                            onClick={() => toggleRoleSelection(role.name)}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.5rem',
-                                                padding: '0.25rem',
-                                                cursor: 'pointer',
-                                                color: isDarkMode ? '#f8fafc' : '#1e293b',
-                                                fontSize: '0.875rem'
-                                            }}
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedRoles.includes(role.name)}
-                                                readOnly
-                                                style={{ cursor: 'pointer' }}
-                                            />
-                                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                {role.name}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                    <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Top Roles</h2>
+                            <InfoTooltip text="Distribution of candidates across different job designations." />
                         </div>
+                        <p style={{ fontSize: '0.875rem', color: '#94a3b8', margin: '0.25rem 0 0 0' }}>Displaying top 5 roles by default</p>
                     </div>
                     <div className="chart-container">
                         <ResponsiveContainer width="100%" height="100%">
@@ -696,111 +716,24 @@ export default function CandidateDashboard() {
             <div className="dashboard-grid">
                 {/* Location Chart */}
                 <div className="glass-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', position: 'relative' }}>
-                        <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Top Locations</h2>
-
-                        {/* Custom Multi-Select Dropdown for Locations */}
-                        <div style={{ position: 'relative' }}>
-                            <button
-                                onClick={() => setIsLocationDropdownOpen(!isLocationDropdownOpen)}
-                                style={{
-                                    background: isDarkMode ? '#1e293b' : '#ffffff',
-                                    color: isDarkMode ? '#f8fafc' : '#1e293b',
-                                    border: isDarkMode ? '1px solid #334155' : '1px solid #cbd5e1',
-                                    borderRadius: '4px',
-                                    padding: '0.25rem 0.75rem',
-                                    fontSize: '0.875rem',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem'
-                                }}
-                            >
-                                {selectedLocations.length === 0 ? 'Top 5 (Default)' : `${selectedLocations.length} Selected`}
-                                <span style={{ fontSize: '0.75rem' }}>▼</span>
-                            </button>
-
-                            {isLocationDropdownOpen && (
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '100%',
-                                    right: 0,
-                                    marginTop: '0.5rem',
-                                    background: isDarkMode ? '#1e293b' : '#ffffff',
-                                    border: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0',
-                                    borderRadius: '8px',
-                                    padding: '0.5rem',
-                                    zIndex: 50,
-                                    width: '200px',
-                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                                    maxHeight: '300px',
-                                    overflowY: 'auto'
-                                }}>
-                                    <div style={{
-                                        padding: '0.5rem',
-                                        borderBottom: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0',
-                                        marginBottom: '0.5rem',
-                                        fontSize: '0.75rem',
-                                        color: isDarkMode ? '#94a3b8' : '#64748b',
-                                        cursor: 'pointer',
-                                        textAlign: 'center'
-                                    }}
-                                        onClick={() => {
-                                            setSelectedLocations([]);
-                                            setLocationSearch('');
-                                            setIsLocationDropdownOpen(false);
-                                        }}
-                                    >
-                                        Reset to Top 5
-                                    </div>
-                                    <div style={{ padding: '0.5rem', borderBottom: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
-                                        <input
-                                            type="text"
-                                            placeholder="Search Locations..."
-                                            value={locationSearch}
-                                            onChange={(e) => setLocationSearch(e.target.value)}
-                                            style={{
-                                                width: '100%',
-                                                padding: '4px 8px',
-                                                borderRadius: '4px',
-                                                border: isDarkMode ? '1px solid #475569' : '1px solid #cbd5e1',
-                                                background: isDarkMode ? '#0f172a' : '#ffffff',
-                                                color: isDarkMode ? '#f8fafc' : '#1e293b',
-                                                fontSize: '0.875rem'
-                                            }}
-                                            onClick={(e) => e.stopPropagation()}
-                                        />
-                                    </div>
-                                    {allLocationData.filter(l => l.name.toLowerCase().includes(locationSearch.toLowerCase())).map(loc => (
-                                        <div
-                                            key={loc.name}
-                                            onClick={() => toggleLocationSelection(loc.name)}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.5rem',
-                                                padding: '0.25rem',
-                                                cursor: 'pointer',
-                                                color: isDarkMode ? '#f8fafc' : '#1e293b',
-                                                fontSize: '0.875rem'
-                                            }}
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedLocations.includes(loc.name)}
-                                                readOnly
-                                                style={{ cursor: 'pointer' }}
-                                            />
-                                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                {loc.name}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                    <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Top Locations</h2>
+                            <InfoTooltip text="Locations with the highest number of candidates." />
                         </div>
+                        <p style={{ fontSize: '0.875rem', color: '#94a3b8', margin: '0.25rem 0 0 0' }}>Displaying top 5 locations by default</p>
                     </div>
-                    <div className="chart-container">
+                    <div className="chart-container" style={{ position: 'relative' }}>
+                        {loading ? (
+                            <div style={{
+                                position: 'absolute',
+                                top: 0, left: 0, right: 0, bottom: 0,
+                                display: 'flex', justifyContent: 'center', alignItems: 'center',
+                                background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(2px)', zIndex: 10
+                            }}>
+                                <div className="loading-spinner"></div>
+                            </div>
+                        ) : null}
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={displayedLocations} layout="vertical" margin={{ left: 40, right: 40 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.grid.stroke} horizontal={false} />
@@ -823,111 +756,24 @@ export default function CandidateDashboard() {
 
                 {/* Skills Chart */}
                 <div className="glass-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', position: 'relative' }}>
-                        <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Top Skills</h2>
-
-                        {/* Custom Multi-Select Dropdown for Skills */}
-                        <div style={{ position: 'relative' }}>
-                            <button
-                                onClick={() => setIsSkillDropdownOpen(!isSkillDropdownOpen)}
-                                style={{
-                                    background: isDarkMode ? '#1e293b' : '#ffffff',
-                                    color: isDarkMode ? '#f8fafc' : '#1e293b',
-                                    border: isDarkMode ? '1px solid #334155' : '1px solid #cbd5e1',
-                                    borderRadius: '4px',
-                                    padding: '0.25rem 0.75rem',
-                                    fontSize: '0.875rem',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem'
-                                }}
-                            >
-                                {selectedSkills.length === 0 ? 'Top 5 (Default)' : `${selectedSkills.length} Selected`}
-                                <span style={{ fontSize: '0.75rem' }}>▼</span>
-                            </button>
-
-                            {isSkillDropdownOpen && (
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '100%',
-                                    right: 0,
-                                    marginTop: '0.5rem',
-                                    background: isDarkMode ? '#1e293b' : '#ffffff',
-                                    border: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0',
-                                    borderRadius: '8px',
-                                    padding: '0.5rem',
-                                    zIndex: 50,
-                                    width: '200px',
-                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                                    maxHeight: '300px',
-                                    overflowY: 'auto'
-                                }}>
-                                    <div style={{
-                                        padding: '0.5rem',
-                                        borderBottom: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0',
-                                        marginBottom: '0.5rem',
-                                        fontSize: '0.75rem',
-                                        color: isDarkMode ? '#94a3b8' : '#64748b',
-                                        cursor: 'pointer',
-                                        textAlign: 'center'
-                                    }}
-                                        onClick={() => {
-                                            setSelectedSkills([]);
-                                            setSkillSearch('');
-                                            setIsSkillDropdownOpen(false);
-                                        }}
-                                    >
-                                        Reset to Top 5
-                                    </div>
-                                    <div style={{ padding: '0.5rem', borderBottom: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
-                                        <input
-                                            type="text"
-                                            placeholder="Search Skills..."
-                                            value={skillSearch}
-                                            onChange={(e) => setSkillSearch(e.target.value)}
-                                            style={{
-                                                width: '100%',
-                                                padding: '4px 8px',
-                                                borderRadius: '4px',
-                                                border: isDarkMode ? '1px solid #475569' : '1px solid #cbd5e1',
-                                                background: isDarkMode ? '#0f172a' : '#ffffff',
-                                                color: isDarkMode ? '#f8fafc' : '#1e293b',
-                                                fontSize: '0.875rem'
-                                            }}
-                                            onClick={(e) => e.stopPropagation()}
-                                        />
-                                    </div>
-                                    {allSkillsData.filter(s => s.name.toLowerCase().includes(skillSearch.toLowerCase())).map(skill => (
-                                        <div
-                                            key={skill.name}
-                                            onClick={() => toggleSkillSelection(skill.name)}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.5rem',
-                                                padding: '0.25rem',
-                                                cursor: 'pointer',
-                                                color: isDarkMode ? '#f8fafc' : '#1e293b',
-                                                fontSize: '0.875rem'
-                                            }}
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedSkills.includes(skill.name)}
-                                                readOnly
-                                                style={{ cursor: 'pointer' }}
-                                            />
-                                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                {skill.name}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                    <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Top Skills</h2>
+                            <InfoTooltip text="Most frequent skills listed by candidates." />
                         </div>
+                        <p style={{ fontSize: '0.875rem', color: '#94a3b8', margin: '0.25rem 0 0 0' }}>Displaying top 5 skills by default</p>
                     </div>
-                    <div className="chart-container">
+                    <div className="chart-container" style={{ position: 'relative' }}>
+                        {loading ? (
+                            <div style={{
+                                position: 'absolute',
+                                top: 0, left: 0, right: 0, bottom: 0,
+                                display: 'flex', justifyContent: 'center', alignItems: 'center',
+                                background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(2px)', zIndex: 10
+                            }}>
+                                <div className="loading-spinner"></div>
+                            </div>
+                        ) : null}
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={displayedSkills} layout="vertical" margin={{ left: 40, right: 40 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.grid.stroke} horizontal={false} />
@@ -950,113 +796,26 @@ export default function CandidateDashboard() {
             </div>
 
             <div className="dashboard-grid">
-                {/* Industry (Vertical) Chart */}
+                {/* Industry Breakdown (Vertical) Chart */}
                 <div className="glass-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', position: 'relative' }}>
-                        <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Industry Breakdown</h2>
-
-                        {/* Custom Multi-Select Dropdown for Vertical */}
-                        <div style={{ position: 'relative' }}>
-                            <button
-                                onClick={() => setIsVerticalDropdownOpen(!isVerticalDropdownOpen)}
-                                style={{
-                                    background: isDarkMode ? '#1e293b' : '#ffffff',
-                                    color: isDarkMode ? '#f8fafc' : '#1e293b',
-                                    border: isDarkMode ? '1px solid #334155' : '1px solid #cbd5e1',
-                                    borderRadius: '4px',
-                                    padding: '0.25rem 0.75rem',
-                                    fontSize: '0.875rem',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem'
-                                }}
-                            >
-                                {selectedVerticals.length === 0 ? 'Top 5 (Default)' : `${selectedVerticals.length} Selected`}
-                                <span style={{ fontSize: '0.75rem' }}>▼</span>
-                            </button>
-
-                            {isVerticalDropdownOpen && (
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '100%',
-                                    right: 0,
-                                    marginTop: '0.5rem',
-                                    background: isDarkMode ? '#1e293b' : '#ffffff',
-                                    border: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0',
-                                    borderRadius: '8px',
-                                    padding: '0.5rem',
-                                    zIndex: 50,
-                                    width: '200px',
-                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                                    maxHeight: '300px',
-                                    overflowY: 'auto'
-                                }}>
-                                    <div style={{
-                                        padding: '0.5rem',
-                                        borderBottom: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0',
-                                        marginBottom: '0.5rem',
-                                        fontSize: '0.75rem',
-                                        color: isDarkMode ? '#94a3b8' : '#64748b',
-                                        cursor: 'pointer',
-                                        textAlign: 'center'
-                                    }}
-                                        onClick={() => {
-                                            setSelectedVerticals([]);
-                                            setVerticalSearch('');
-                                            setIsVerticalDropdownOpen(false);
-                                        }}
-                                    >
-                                        Reset to Top 5
-                                    </div>
-                                    <div style={{ padding: '0.5rem', borderBottom: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
-                                        <input
-                                            type="text"
-                                            placeholder="Search Industries..."
-                                            value={verticalSearch}
-                                            onChange={(e) => setVerticalSearch(e.target.value)}
-                                            style={{
-                                                width: '100%',
-                                                padding: '4px 8px',
-                                                borderRadius: '4px',
-                                                border: isDarkMode ? '1px solid #475569' : '1px solid #cbd5e1',
-                                                background: isDarkMode ? '#0f172a' : '#ffffff',
-                                                color: isDarkMode ? '#f8fafc' : '#1e293b',
-                                                fontSize: '0.875rem'
-                                            }}
-                                            onClick={(e) => e.stopPropagation()}
-                                        />
-                                    </div>
-                                    {allVerticalData.filter(v => v.name.toLowerCase().includes(verticalSearch.toLowerCase())).map(v => (
-                                        <div
-                                            key={v.name}
-                                            onClick={() => toggleVerticalSelection(v.name)}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.5rem',
-                                                padding: '0.25rem',
-                                                cursor: 'pointer',
-                                                color: isDarkMode ? '#f8fafc' : '#1e293b',
-                                                fontSize: '0.875rem'
-                                            }}
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedVerticals.includes(v.name)}
-                                                readOnly
-                                                style={{ cursor: 'pointer' }}
-                                            />
-                                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                {v.name}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                    <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Industry Breakdown</h2>
+                            <InfoTooltip text="Candidates categorized by industry verticals." />
                         </div>
+                        <p style={{ fontSize: '0.875rem', color: '#94a3b8', margin: '0.25rem 0 0 0' }}>Displaying top 5 industries by default</p>
                     </div>
-                    <div className="chart-container">
+                    <div className="chart-container" style={{ position: 'relative' }}>
+                        {loading ? (
+                            <div style={{
+                                position: 'absolute',
+                                top: 0, left: 0, right: 0, bottom: 0,
+                                display: 'flex', justifyContent: 'center', alignItems: 'center',
+                                background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(2px)', zIndex: 10
+                            }}>
+                                <div className="loading-spinner"></div>
+                            </div>
+                        ) : null}
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={displayedVerticals} layout="vertical" margin={{ left: 40, right: 40 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.grid.stroke} horizontal={false} />
@@ -1079,17 +838,30 @@ export default function CandidateDashboard() {
 
                 {/* Domain (Department Type) Chart */}
                 <div className="glass-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', position: 'relative' }}>
-                        <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Domain Distribution</h2>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Domain Distribution</h2>
+                            <InfoTooltip text="Overview of candidates across different business domains." />
+                        </div>
                     </div>
-                    <div className="chart-container">
+                    <div className="chart-container" style={{ position: 'relative' }}>
+                        {loading ? (
+                            <div style={{
+                                position: 'absolute',
+                                top: 0, left: 0, right: 0, bottom: 0,
+                                display: 'flex', justifyContent: 'center', alignItems: 'center',
+                                background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(2px)', zIndex: 10
+                            }}>
+                                <div className="loading-spinner"></div>
+                            </div>
+                        ) : null}
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
                                     data={displayedDepartmentTypes}
                                     cx="50%"
                                     cy="50%"
-                                    innerRadius={60}
+                                    innerRadius={0}
                                     outerRadius={100}
                                     fill="#8884d8"
                                     paddingAngle={5}
@@ -1112,95 +884,97 @@ export default function CandidateDashboard() {
             </div>
 
             {/* Candidate Details Modal */}
-            {isModalOpen && selectedCandidate && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    zIndex: 1000,
-                    backdropFilter: 'blur(4px)'
-                }} onClick={() => setIsModalOpen(false)}>
+            {
+                isModalOpen && selectedCandidate && (
                     <div style={{
-                        backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
-                        color: isDarkMode ? '#f8fafc' : '#1e293b',
-                        borderRadius: '12px',
-                        width: '90%',
-                        maxWidth: '800px',
-                        maxHeight: '90vh',
-                        overflowY: 'auto',
-                        padding: '2rem',
-                        position: 'relative',
-                        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
-                    }} onClick={e => e.stopPropagation()}>
-                        <button
-                            onClick={() => setIsModalOpen(false)}
-                            style={{
-                                position: 'absolute',
-                                top: '1rem',
-                                right: '1rem',
-                                background: 'transparent',
-                                border: 'none',
-                                color: isDarkMode ? '#94a3b8' : '#64748b',
-                                fontSize: '1.5rem',
-                                cursor: 'pointer',
-                                padding: '0.5rem',
-                                lineHeight: 1
-                            }}
-                        >
-                            ×
-                        </button>
-
-                        <h2 style={{
-                            marginTop: 0,
-                            marginBottom: '1.5rem',
-                            fontSize: '1.5rem',
-                            borderBottom: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`,
-                            paddingBottom: '1rem'
-                        }}>
-                            Candidate Details
-                        </h2>
-
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        zIndex: 1000,
+                        backdropFilter: 'blur(4px)'
+                    }} onClick={() => setIsModalOpen(false)}>
                         <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-                            gap: '1.5rem'
-                        }}>
-                            {Object.entries(selectedCandidate).map(([key, value]) => {
-                                // Skip internal/complex objects if any, keep simple values
-                                if (typeof value === 'object' && value !== null) return null;
-                                return (
-                                    <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                        <span style={{
-                                            fontSize: '0.75rem',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.05em',
-                                            color: isDarkMode ? '#94a3b8' : '#64748b',
-                                            fontWeight: 600
-                                        }}>
-                                            {key}
-                                        </span>
-                                        <span style={{
-                                            fontSize: '1rem',
-                                            color: isDarkMode ? '#f8fafc' : '#1e293b'
-                                        }}>
-                                            {String(value || 'N/A')}
-                                        </span>
-                                    </div>
-                                );
-                            })}
+                            backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                            color: isDarkMode ? '#f8fafc' : '#1e293b',
+                            borderRadius: '12px',
+                            width: '90%',
+                            maxWidth: '800px',
+                            maxHeight: '90vh',
+                            overflowY: 'auto',
+                            padding: '2rem',
+                            position: 'relative',
+                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+                        }} onClick={e => e.stopPropagation()}>
+                            <button
+                                onClick={() => setIsModalOpen(false)}
+                                style={{
+                                    position: 'absolute',
+                                    top: '1rem',
+                                    right: '1rem',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: isDarkMode ? '#94a3b8' : '#64748b',
+                                    fontSize: '1.5rem',
+                                    cursor: 'pointer',
+                                    padding: '0.5rem',
+                                    lineHeight: 1
+                                }}
+                            >
+                                ×
+                            </button>
+
+                            <h2 style={{
+                                marginTop: 0,
+                                marginBottom: '1.5rem',
+                                fontSize: '1.5rem',
+                                borderBottom: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`,
+                                paddingBottom: '1rem'
+                            }}>
+                                Candidate Details
+                            </h2>
+
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+                                gap: '1.5rem'
+                            }}>
+                                {Object.entries(selectedCandidate).map(([key, value]) => {
+                                    // Skip internal/complex objects if any, keep simple values
+                                    if (typeof value === 'object' && value !== null) return null;
+                                    return (
+                                        <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                            <span style={{
+                                                fontSize: '0.75rem',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.05em',
+                                                color: isDarkMode ? '#94a3b8' : '#64748b',
+                                                fontWeight: 600
+                                            }}>
+                                                {key}
+                                            </span>
+                                            <span style={{
+                                                fontSize: '1rem',
+                                                color: isDarkMode ? '#f8fafc' : '#1e293b'
+                                            }}>
+                                                {String(value || 'N/A')}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Data Table */}
-            <div className="glass-card" style={{ marginTop: '2rem' }}>
+            {/* <div className="glass-card" style={{ marginTop: '2rem' }}>
                 <h2 style={{ marginBottom: '1.5rem', fontSize: '1.25rem' }}>Candidate Details</h2>
                 <div className="table-container" style={{ maxHeight: '500px', overflowY: 'auto', overflowX: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 0.5rem' }}>
@@ -1271,7 +1045,7 @@ export default function CandidateDashboard() {
                     </table>
                 </div>
 
-                {/* Pagination Controls */}
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', padding: '0 1rem' }}>
                     <div style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
                         Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCandidates)} of {totalCandidates} entries
@@ -1348,7 +1122,7 @@ export default function CandidateDashboard() {
                         </button>
                     </div>
                 </div>
-            </div>
-        </div>
+            </div> */}
+        </div >
     );
 }
