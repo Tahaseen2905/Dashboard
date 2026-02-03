@@ -683,7 +683,7 @@ export default function CandidateDashboard() {
                             <PieChart>
                                 <Pie
                                     data={displayedRoles}
-                                    cx="50%"
+                                    cx="35%"
                                     cy="50%"
                                     innerRadius={60}
                                     outerRadius={100}
@@ -700,7 +700,13 @@ export default function CandidateDashboard() {
                                     contentStyle={chartStyles.contentStyle}
                                     itemStyle={chartStyles.itemStyle}
                                 />
-                                <Legend iconType="circle" />
+                                <Legend
+                                    iconType="circle"
+                                    layout="vertical"
+                                    verticalAlign="middle"
+                                    align="right"
+                                    wrapperStyle={{ width: '30%', lineHeight: '24px' }}
+                                />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
