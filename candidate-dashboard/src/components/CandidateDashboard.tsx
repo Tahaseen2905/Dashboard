@@ -96,22 +96,20 @@ export default function CandidateDashboard() {
     const [data, setData] = useState<CandidateData[]>([]);
     const [allLocationData, setAllLocationData] = useState<ChartData[]>([]);
     const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
-    const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
 
     const [allSkillsData, setAllSkillsData] = useState<ChartData[]>([]);
     const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-    const [isSkillDropdownOpen, setIsSkillDropdownOpen] = useState(false);
 
     const [allClientData, setAllClientData] = useState<ChartData[]>([]);
     const [selectedClients, setSelectedClients] = useState<string[]>([]);
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
     const [allRoleData, setAllRoleData] = useState<ChartData[]>([]);
     const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
-    const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
 
     const [allVerticalData, setAllVerticalData] = useState<ChartData[]>([]);
     const [selectedVerticals, setSelectedVerticals] = useState<string[]>([]);
-    const [isVerticalDropdownOpen, setIsVerticalDropdownOpen] = useState(false);
+
+    const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
     const [allDepartmentTypeData, setAllDepartmentTypeData] = useState<ChartData[]>([]);
 
@@ -571,11 +569,11 @@ export default function CandidateDashboard() {
                     <Search size={16} />
                     <span>FILTERS:</span>
                 </div>
-                {renderFilterDropdown('Clients', allClientData, selectedClients, toggleClientSelection, () => setSelectedClients([]), clientSearch, setClientSearch, isDropdownOpen, setIsDropdownOpen)}
-                {renderFilterDropdown('Roles', allRoleData, selectedRoles, toggleRoleSelection, () => setSelectedRoles([]), roleSearch, setRoleSearch, isRoleDropdownOpen, setIsRoleDropdownOpen)}
-                {renderFilterDropdown('Locations', allLocationData, selectedLocations, toggleLocationSelection, () => setSelectedLocations([]), locationSearch, setLocationSearch, isLocationDropdownOpen, setIsLocationDropdownOpen)}
-                {renderFilterDropdown('Skills', allSkillsData, selectedSkills, toggleSkillSelection, () => setSelectedSkills([]), skillSearch, setSkillSearch, isSkillDropdownOpen, setIsSkillDropdownOpen)}
-                {renderFilterDropdown('Industry', allVerticalData, selectedVerticals, toggleVerticalSelection, () => setSelectedVerticals([]), verticalSearch, setVerticalSearch, isVerticalDropdownOpen, setIsVerticalDropdownOpen)}
+                {renderFilterDropdown('Clients', allClientData, selectedClients, toggleClientSelection, () => setSelectedClients([]), clientSearch, setClientSearch, activeDropdown === 'Clients', (isOpen) => setActiveDropdown(isOpen ? 'Clients' : null))}
+                {renderFilterDropdown('Roles', allRoleData, selectedRoles, toggleRoleSelection, () => setSelectedRoles([]), roleSearch, setRoleSearch, activeDropdown === 'Roles', (isOpen) => setActiveDropdown(isOpen ? 'Roles' : null))}
+                {renderFilterDropdown('Locations', allLocationData, selectedLocations, toggleLocationSelection, () => setSelectedLocations([]), locationSearch, setLocationSearch, activeDropdown === 'Locations', (isOpen) => setActiveDropdown(isOpen ? 'Locations' : null))}
+                {renderFilterDropdown('Skills', allSkillsData, selectedSkills, toggleSkillSelection, () => setSelectedSkills([]), skillSearch, setSkillSearch, activeDropdown === 'Skills', (isOpen) => setActiveDropdown(isOpen ? 'Skills' : null))}
+                {renderFilterDropdown('Industry', allVerticalData, selectedVerticals, toggleVerticalSelection, () => setSelectedVerticals([]), verticalSearch, setVerticalSearch, activeDropdown === 'Industry', (isOpen) => setActiveDropdown(isOpen ? 'Industry' : null))}
             </div>
 
             {/* Metrics Cards */}

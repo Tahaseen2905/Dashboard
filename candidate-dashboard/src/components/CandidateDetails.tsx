@@ -3,6 +3,8 @@ import * as XLSX from 'xlsx';
 import { Search, Sun, Moon, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import j2wLogo from '../assets/j2w.svg';
+import ClientDetailsModal from './ClientDetailsModal';
+import CandidateProfileModal from './CandidateProfileModal';
 
 interface CandidateData {
     'Employee ID': string;
@@ -27,6 +29,17 @@ export default function CandidateDetails() {
     const itemsPerPage = 10;
 
     const navigate = useNavigate();
+
+    const [selectedClient, setSelectedClient] = useState<string | null>(null);
+    const [selectedCandidate, setSelectedCandidate] = useState<CandidateData | null>(null);
+
+    const handleClientClick = (client: string) => {
+        setSelectedClient(client);
+    };
+
+    const handleCandidateClick = (candidate: CandidateData) => {
+        setSelectedCandidate(candidate);
+    };
 
     // Load theme
     useEffect(() => {
@@ -163,12 +176,22 @@ export default function CandidateDetails() {
                             {paginatedData.map((candidate, index) => (
                                 <tr key={index}>
                                     <td style={{ fontWeight: 500 }}>{candidate['Employee ID']}</td>
-                                    <td>
+                                    <td
+                                        onClick={() => handleCandidateClick(candidate)}
+                                        style={{
+                                            cursor: 'pointer',
+                                            transition: 'transform 0.2s',
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                                    >
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.875rem' }}>
                                                 {candidate['Candidate Name']?.charAt(0) || 'U'}
                                             </div>
-                                            {candidate['Candidate Name']}
+                                            <span style={{ fontWeight: 600, color: isDarkMode ? '#e2e8f0' : '#1e293b' }}>
+                                                {candidate['Candidate Name']}
+                                            </span>
                                         </div>
                                     </td>
                                     <td>{candidate['Location']}</td>
@@ -184,7 +207,20 @@ export default function CandidateDetails() {
                                             {candidate['roleDesignation']}
                                         </span>
                                     </td>
-                                    <td>{candidate['client']}</td>
+                                    <td
+                                        onClick={() => handleClientClick(candidate['client'])}
+                                        style={{
+                                            cursor: 'pointer',
+                                            color: '#3b82f6',
+                                            fontWeight: 500,
+                                            textDecoration: 'underline',
+                                            textUnderlineOffset: '2px'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'}
+                                        onMouseLeave={(e) => e.currentTarget.style.color = '#3b82f6'}
+                                    >
+                                        {candidate['client']}
+                                    </td>
                                     <td>
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
                                             {candidate['skills']?.split(',').slice(0, 3).map((skill, i) => (
@@ -283,6 +319,19 @@ export default function CandidateDetails() {
                     </div>
                 </div>
             </div>
+
+            <ClientDetailsModal
+                isOpen={!!selectedClient}
+                onClose={() => setSelectedClient(null)}
+                clientName={selectedClient}
+                candidates={data.filter(c => c.client === selectedClient)}
+            />
+
+            <CandidateProfileModal
+                isOpen={!!selectedCandidate}
+                onClose={() => setSelectedCandidate(null)}
+                candidate={selectedCandidate}
+            />
         </div>
     );
 }
