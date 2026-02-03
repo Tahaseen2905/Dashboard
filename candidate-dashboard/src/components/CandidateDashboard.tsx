@@ -34,7 +34,18 @@ interface ChartData {
     count: number;
 }
 
-const COLORS = ['#60a5fa', '#a78bfa', '#34d399', '#f472b6', '#fbbf24', '#f87171'];
+export const CHART_COLORS = [
+    //"#0F172A", // Navy (dark anchor)
+    "#1E3A8A", // Deep Blue
+    "#1D4ED8", // Strong Blue
+    "#2563EB", // Primary Blue
+    "#3B82F6", // Bright Blue
+    "#60A5FA", // Soft Blue
+    "#38BDF8", // Sky Blue
+    "#22D3EE", // Cyan
+    "#14B8A6", // Teal
+    "#0D9488", // Deep Teal
+];
 
 const InfoTooltip = ({ text }: { text: string }) => {
     const [isVisible, setIsVisible] = useState(false);
@@ -145,7 +156,7 @@ export default function CandidateDashboard() {
         cursor: {
             fill: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
         },
-        grid: { stroke: isDarkMode ? '#334155' : '#e2e8f0' },
+        grid: { stroke: isDarkMode ? '#475569' : '#cbd5e1' },
         axis: { stroke: isDarkMode ? '#94a3b8' : '#64748b' }
     };
 
@@ -511,7 +522,7 @@ export default function CandidateDashboard() {
                     <button
                         onClick={() => navigate('/candidate-details')}
                         style={{
-                            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+                            background: 'linear-gradient(135deg, #1D4ED8 0%, #0D9488 100%)',
                             color: 'white',
                             border: 'none',
                             padding: '1.0rem 1.5rem',
@@ -640,9 +651,9 @@ export default function CandidateDashboard() {
                     <div className="chart-container">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={displayedClients} layout="vertical" margin={{ left: 40, right: 40 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.grid.stroke} horizontal={false} />
-                                <XAxis type="number" stroke={chartStyles.axis.stroke} />
-                                <YAxis dataKey="name" type="category" stroke={chartStyles.axis.stroke} width={100} />
+                                <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.grid.stroke} horizontal={true} vertical={true} />
+                                <XAxis type="number" stroke={chartStyles.axis.stroke} axisLine={false} tickLine={false} />
+                                <YAxis dataKey="name" type="category" stroke={chartStyles.axis.stroke} width={100} axisLine={false} tickLine={false} />
                                 <Tooltip
                                     contentStyle={chartStyles.contentStyle}
                                     itemStyle={chartStyles.itemStyle}
@@ -650,7 +661,7 @@ export default function CandidateDashboard() {
                                 />
                                 <Bar dataKey="count" fill="#a78bfa" radius={[0, 4, 4, 0]}>
                                     {displayedClients.map((_, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[(index + 1) % COLORS.length]} />
+                                        <Cell key={`cell-${index}`} fill={CHART_COLORS[(index + 1) % CHART_COLORS.length]} />
                                     ))}
                                 </Bar>
                             </BarChart>
@@ -682,14 +693,14 @@ export default function CandidateDashboard() {
                                     nameKey="name"
                                 >
                                     {displayedRoles.map((_, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[(index + 3) % COLORS.length]} />
+                                        <Cell key={`cell-${index}`} fill={CHART_COLORS[(index + 3) % CHART_COLORS.length]} />
                                     ))}
                                 </Pie>
                                 <Tooltip
                                     contentStyle={chartStyles.contentStyle}
                                     itemStyle={chartStyles.itemStyle}
                                 />
-                                <Legend />
+                                <Legend iconType="circle" />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
@@ -719,9 +730,9 @@ export default function CandidateDashboard() {
                         ) : null}
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={displayedLocations} layout="vertical" margin={{ left: 40, right: 40 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.grid.stroke} horizontal={false} />
-                                <XAxis type="number" stroke={chartStyles.axis.stroke} />
-                                <YAxis dataKey="name" type="category" stroke={chartStyles.axis.stroke} width={100} />
+                                <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.grid.stroke} horizontal={true} vertical={true} />
+                                <XAxis type="number" stroke={chartStyles.axis.stroke} axisLine={false} tickLine={false} />
+                                <YAxis dataKey="name" type="category" stroke={chartStyles.axis.stroke} width={100} axisLine={false} tickLine={false} />
                                 <Tooltip
                                     contentStyle={chartStyles.contentStyle}
                                     itemStyle={chartStyles.itemStyle}
@@ -729,7 +740,7 @@ export default function CandidateDashboard() {
                                 />
                                 <Bar dataKey="count" fill="#8884d8" radius={[0, 4, 4, 0]}>
                                     {displayedLocations.map((_, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                                     ))}
                                 </Bar>
                             </BarChart>
@@ -759,9 +770,9 @@ export default function CandidateDashboard() {
                         ) : null}
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={displayedSkills} layout="vertical" margin={{ left: 40, right: 40 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.grid.stroke} horizontal={false} />
-                                <XAxis type="number" stroke={chartStyles.axis.stroke} />
-                                <YAxis dataKey="name" type="category" stroke={chartStyles.axis.stroke} width={100} />
+                                <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.grid.stroke} horizontal={true} vertical={true} />
+                                <XAxis type="number" stroke={chartStyles.axis.stroke} axisLine={false} tickLine={false} />
+                                <YAxis dataKey="name" type="category" stroke={chartStyles.axis.stroke} width={100} axisLine={false} tickLine={false} />
                                 <Tooltip
                                     contentStyle={chartStyles.contentStyle}
                                     itemStyle={chartStyles.itemStyle}
@@ -769,7 +780,7 @@ export default function CandidateDashboard() {
                                 />
                                 <Bar dataKey="count" fill="#34d399" radius={[0, 4, 4, 0]}>
                                     {displayedSkills.map((_, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />
+                                        <Cell key={`cell-${index}`} fill={CHART_COLORS[(index + 2) % CHART_COLORS.length]} />
                                     ))}
                                 </Bar>
                             </BarChart>
@@ -801,9 +812,9 @@ export default function CandidateDashboard() {
                         ) : null}
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={displayedVerticals} layout="vertical" margin={{ left: 40, right: 40 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.grid.stroke} horizontal={false} />
-                                <XAxis type="number" stroke={chartStyles.axis.stroke} />
-                                <YAxis dataKey="name" type="category" stroke={chartStyles.axis.stroke} width={100} />
+                                <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.grid.stroke} horizontal={true} vertical={true} />
+                                <XAxis type="number" stroke={chartStyles.axis.stroke} axisLine={false} tickLine={false} />
+                                <YAxis dataKey="name" type="category" stroke={chartStyles.axis.stroke} width={100} axisLine={false} tickLine={false} />
                                 <Tooltip
                                     contentStyle={chartStyles.contentStyle}
                                     itemStyle={chartStyles.itemStyle}
@@ -811,7 +822,7 @@ export default function CandidateDashboard() {
                                 />
                                 <Bar dataKey="count" fill="#60a5fa" radius={[0, 4, 4, 0]}>
                                     {displayedVerticals.map((_, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[(index + 4) % COLORS.length]} />
+                                        <Cell key={`cell-${index}`} fill={CHART_COLORS[(index + 4) % CHART_COLORS.length]} />
                                     ))}
                                 </Bar>
                             </BarChart>
@@ -852,7 +863,7 @@ export default function CandidateDashboard() {
                                     nameKey="name"
                                 >
                                     {displayedDepartmentTypes.map((_, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[(index + 5) % COLORS.length]} />
+                                        <Cell key={`cell-${index}`} fill={CHART_COLORS[(index + 5) % CHART_COLORS.length]} />
                                     ))}
                                 </Pie>
                                 <Tooltip
