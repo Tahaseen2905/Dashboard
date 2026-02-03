@@ -512,7 +512,7 @@ export default function CandidateDashboard() {
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                     <img src={j2wLogo} alt="J2W Logo" style={{ height: '40px', width: 'auto', marginRight: '0.5rem' }} />
                     <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>
-                        Candidate Analytics
+                        Talent Landscape
                     </h1>
                 </div>
 
@@ -582,7 +582,7 @@ export default function CandidateDashboard() {
                 {/* Total Candidates */}
                 <div className="metric-card">
                     <div className="metric-content">
-                        <span className="metric-label">Total Candidates</span>
+                        <span className="metric-label">No Of Samples</span>
                         <div className="metric-value">{totalCandidates}</div>
                     </div>
                     <div className="metric-icon-container" style={{ background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.05) 100%)', color: '#3b82f6' }}>
