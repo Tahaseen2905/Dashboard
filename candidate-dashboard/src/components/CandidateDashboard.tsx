@@ -857,7 +857,7 @@ export default function CandidateDashboard() {
                             <PieChart>
                                 <Pie
                                     data={displayedDepartmentTypes}
-                                    cx="50%"
+                                    cx="35%"
                                     cy="50%"
                                     innerRadius={0}
                                     outerRadius={100}
@@ -874,7 +874,13 @@ export default function CandidateDashboard() {
                                     contentStyle={chartStyles.contentStyle}
                                     itemStyle={chartStyles.itemStyle}
                                 />
-                                <Legend />
+                                <Legend
+                                    layout="vertical"
+                                    verticalAlign="middle"
+                                    align="right"
+                                    wrapperStyle={{ width: '30%', right: 0 }}
+                                    iconType="circle"
+                                />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
