@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import DashboardChatbot from './DashboardChatbot';
 import { useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
 import {
@@ -186,13 +187,42 @@ export default function CandidateDashboard() {
     const processCharts = (items: CandidateData[]) => {
         // Process Locations
         const locMap: Record<string, number> = {};
+        const locationSynonyms: Record<string, string> = {
+            'bengaluru': 'Bangalore',
+            'gurugram': 'Gurgaon',
+            'bombay': 'Mumbai',
+            'calcutta': 'Kolkata',
+            'madras': 'Chennai',
+            'new delhi': 'Delhi',
+            'delhi ncr': 'Delhi'
+        };
+
         items.forEach(item => {
-            const loc = item.Location?.trim() || 'Unknown';
+            let rawLoc = item.Location?.toString().trim();
+            let loc = 'Unknown';
+
+            if (rawLoc && rawLoc.toLowerCase() !== 'nan' && rawLoc.toLowerCase() !== 'null') {
+                // Heuristic: Split by common delimiters and take the first part (City)
+                let firstPart = rawLoc.split(/[,/\-–()]/)[0].trim();
+
+                // Aggressive cleanup: remove digits and special chars
+                let clean = firstPart.replace(/[^a-zA-Z\s]/g, ' ').trim().toLowerCase();
+
+                // Handle synonyms
+                if (locationSynonyms[clean]) {
+                    clean = locationSynonyms[clean].toLowerCase();
+                }
+
+                if (clean.length >= 2) {
+                    loc = clean.replace(/\b\w/g, c => c.toUpperCase());
+                }
+            }
             locMap[loc] = (locMap[loc] || 0) + 1;
         });
 
         const locChart = Object.entries(locMap)
             .map(([name, count]) => ({ name, count }))
+            .filter(item => item.name !== 'Unknown')
             .sort((a, b) => b.count - a.count);
 
         setAllLocationData(locChart);
@@ -1039,6 +1069,8 @@ export default function CandidateDashboard() {
                     </div>
                 </div>
             </div> */}
+            {/* AI Chatbot */}
+            <DashboardChatbot data={data} />
         </div >
     );
 }
