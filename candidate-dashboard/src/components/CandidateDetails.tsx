@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { Search, Sun, Moon, ArrowLeft } from 'lucide-react';
+import { Search, Sun, Moon, ArrowLeft, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import j2wLogo from '../assets/j2w.svg';
 import ClientDetailsModal from './ClientDetailsModal';
@@ -41,6 +41,13 @@ export default function CandidateDetails() {
         setSelectedCandidate(candidate);
     };
 
+    const handleExport = () => {
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Candidates");
+        XLSX.writeFile(workbook, "Candidate_Data_Export.xlsx");
+    };
+
     // Load theme
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
@@ -49,7 +56,7 @@ export default function CandidateDetails() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await fetch('/candidate_data.xlsx');
+                const response = await fetch(`/align360_highlighted_replaced_with_NA.xlsx?v=${Date.now()}`);
                 if (!response.ok) throw new Error('Failed to fetch Excel file');
 
                 const arrayBuffer = await response.arrayBuffer();
@@ -126,6 +133,25 @@ export default function CandidateDetails() {
                     >
                         <ArrowLeft size={20} />
                         Back to Dashboard
+                    </button>
+
+                    <button
+                        onClick={handleExport}
+                        style={{
+                            background: isDarkMode ? '#1e293b' : '#ffffff',
+                            color: isDarkMode ? '#f8fafc' : '#1e293b',
+                            border: '1px solid var(--card-border)',
+                            padding: '0.5rem 1rem',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            transition: 'all 0.3s ease'
+                        }}
+                    >
+                        <Download size={20} />
+                        Export
                     </button>
 
                     <button

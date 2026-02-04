@@ -162,7 +162,7 @@ export default function CandidateDashboard() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await fetch('/candidate_data.xlsx');
+                const response = await fetch(`/align360_highlighted_replaced_with_NA.xlsx?v=${Date.now()}`);
                 if (!response.ok) throw new Error('Failed to fetch Excel file');
 
                 const arrayBuffer = await response.arrayBuffer();
