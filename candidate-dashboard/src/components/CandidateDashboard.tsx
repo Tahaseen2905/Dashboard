@@ -539,11 +539,40 @@ export default function CandidateDashboard() {
         <div style={{ padding: '1rem', fontFamily: "'Inter', sans-serif" }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <img src={j2wLogo} alt="J2W Logo" style={{ height: '40px', width: 'auto', marginRight: '0.5rem' }} />
-                    <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>
-                        Talent Landscape
-                    </h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{
+                        padding: '0.5rem',
+                        background: isDarkMode ? 'rgba(30, 41, 59, 0.4)' : 'rgba(255, 255, 255, 0.5)',
+                        borderRadius: '12px',
+                        border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(255, 255, 255, 0.8)',
+                        backdropFilter: 'blur(8px)',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                    }}>
+                        <img src={j2wLogo} alt="J2W Logo" style={{ height: '44px', width: 'auto', display: 'block' }} />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <h1 style={{
+                            fontSize: '2rem',
+                            fontWeight: 800,
+                            margin: 0,
+                            lineHeight: 1,
+                            color: isDarkMode ? '#f8fafc' : '#0f172a',
+                            letterSpacing: '-0.02em',
+                            textShadow: isDarkMode ? '0 2px 4px rgba(0,0,0,0.5)' : 'none'
+                        }}>
+                            Talent Landscape
+                        </h1>
+                        {/* <span style={{
+                            fontSize: '0.75rem',
+                            color: isDarkMode ? '#94a3b8' : '#64748b',
+                            fontWeight: 600,
+                            letterSpacing: '0.05em',
+                            textTransform: 'uppercase'
+                        }}>
+                            Recruitment Intelligence
+                        </span> */}
+                    </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -575,20 +604,16 @@ export default function CandidateDashboard() {
                             background: 'transparent',
                             border: 'none',
                             color: 'var(--text-color)',
-                            padding: '0.5rem',
-                            borderRadius: '50%',
                             cursor: 'pointer',
-                            fontSize: '1.25rem',
+                            padding: '0.5rem',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            transition: 'all 0.3s ease',
-                            width: '40px',
-                            height: '40px'
+                            transition: 'color 0.3s ease',
                         }}
                         title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
                     >
-                        {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                        {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
                     </button>
                 </div>
             </div>
