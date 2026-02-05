@@ -22,7 +22,7 @@ export default function DashboardChatbot({ data }: ChatbotProps) {
     const [isConfigured, setIsConfigured] = useState(false);
 
     useEffect(() => {
-        const envKey = import.meta.env.VITE_GEMINI_API_KEY;
+        const envKey = import.meta.env.VITE_GEMINI_API;
         if (envKey && envKey.length > 10) {
             setApiKey(envKey);
             try {
