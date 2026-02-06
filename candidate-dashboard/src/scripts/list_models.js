@@ -1,7 +1,15 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import "dotenv/config";
 
-// Read API key manually since we can't easily rely on vite env vars in a bare node script without setup
-const API_KEY = "AIzaSyA8E3cyIsYkq_6pt920q0U9mb9-ByyKVlI";
+// Read API key from environment variables
+const apiKeys = process.env.VITE_GEMINI_API || "";
+if (!apiKeys) {
+    console.error("Error: VITE_GEMINI_API is not set in environment variables.");
+    process.exit(1);
+}
+
+// Handle multiple keys if present (comma-separated) and use the first one
+const API_KEY = apiKeys.split(',')[0].trim();
 
 const genAI = new GoogleGenerativeAI(API_KEY);
 

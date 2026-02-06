@@ -758,7 +758,13 @@ export default function CandidateDashboard() {
                                     layout="vertical"
                                     verticalAlign="middle"
                                     align="right"
-                                    wrapperStyle={{ width: '30%', lineHeight: '24px' }}
+                                    wrapperStyle={{
+                                        width: '30%',
+                                        lineHeight: '24px',
+                                        maxHeight: '320px',
+                                        overflowY: 'auto',
+                                        paddingRight: '10px'
+                                    }}
                                 />
                             </PieChart>
                         </ResponsiveContainer>
