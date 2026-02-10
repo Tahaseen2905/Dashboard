@@ -357,14 +357,14 @@ export default function CandidateDashboard() {
         setActiveDropdown(null);
     };
 
-    const handleClearFilter = (dropdown: string) => {
-        switch (dropdown) {
-            case 'Clients': setSelectedClients([]); break;
-            case 'Roles': setSelectedRoles([]); break;
-            case 'Locations': setSelectedLocations([]); break;
-            case 'Skills': setSelectedSkills([]); break;
-            case 'Industry': setSelectedVerticals([]); break;
-        }
+
+
+    const handleGlobalClear = () => {
+        setSelectedClients([]);
+        setSelectedRoles([]);
+        setSelectedLocations([]);
+        setSelectedSkills([]);
+        setSelectedVerticals([]);
         setActiveDropdown(null);
     };
 
@@ -462,22 +462,7 @@ export default function CandidateDashboard() {
                         {/* Body: List */}
                         <div style={{ overflowY: 'auto', flex: 1, maxHeight: '250px' }}>
                             {/* Clear Option */}
-                            <div style={{
-                                padding: '0.5rem',
-                                fontSize: '0.75rem',
-                                color: '#ef4444',
-                                cursor: 'pointer',
-                                textAlign: 'center',
-                                fontWeight: 500,
-                                borderBottom: '1px solid var(--card-border)'
-                            }}
-                                onClick={() => {
-                                    handleClearFilter(dropdownKey);
-                                    setSearch('');
-                                }}
-                            >
-                                Clear Selection
-                            </div>
+
 
                             {data.filter(item => item.name.toLowerCase().includes(search.toLowerCase())).map(item => (
                                 <div
@@ -524,6 +509,22 @@ export default function CandidateDashboard() {
                             gap: '0.5rem',
                             justifyContent: 'space-between'
                         }}>
+                            <button
+                                onClick={handleGlobalClear}
+                                style={{
+                                    flex: 1,
+                                    padding: '0.5rem',
+                                    borderRadius: '6px',
+                                    border: '1px solid var(--card-border)',
+                                    background: 'transparent',
+                                    color: '#ef4444',
+                                    cursor: 'pointer',
+                                    fontSize: '0.875rem',
+                                    fontWeight: 500
+                                }}
+                            >
+                                Clear All
+                            </button>
                             <button
                                 onClick={() => setActiveDropdown(null)}
                                 style={{
