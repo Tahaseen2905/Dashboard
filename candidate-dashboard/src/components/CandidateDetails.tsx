@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import j2wLogo from '../assets/j2w.svg';
 import ClientDetailsModal from './ClientDetailsModal';
 import CandidateProfileModal from './CandidateProfileModal';
+import DashboardChatbot from './DashboardChatbot';
 
 interface CandidateData {
     'Employee ID': string;
@@ -358,6 +359,9 @@ export default function CandidateDetails() {
                 onClose={() => setSelectedCandidate(null)}
                 candidate={selectedCandidate}
             />
+
+            {/* AI Chatbot */}
+            <DashboardChatbot data={data} />
         </div>
     );
 }

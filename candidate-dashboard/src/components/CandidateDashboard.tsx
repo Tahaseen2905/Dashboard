@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import DashboardChatbot from './DashboardChatbot';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import {
     BarChart,
@@ -92,27 +92,130 @@ const InfoTooltip = ({ text }: { text: string }) => {
     );
 };
 
+// Helper function to process data for charts
+const processData = (items: CandidateData[]) => {
+    // Process Locations
+    const locMap: Record<string, number> = {};
+    const locationSynonyms: Record<string, string> = {
+        'bengaluru': 'Bangalore',
+        'gurugram': 'Gurgaon',
+        'bombay': 'Mumbai',
+        'calcutta': 'Kolkata',
+        'madras': 'Chennai',
+        'new delhi': 'Delhi',
+        'delhi ncr': 'Delhi'
+    };
+
+    items.forEach(item => {
+        let rawLoc = item.Location?.toString().trim();
+        let loc = 'Unknown';
+
+        if (rawLoc && rawLoc.toLowerCase() !== 'nan' && rawLoc.toLowerCase() !== 'null') {
+            // Heuristic: Split by common delimiters and take the first part (City)
+            let firstPart = rawLoc.split(/[,/\-–()]/)[0].trim();
+
+            // Aggressive cleanup: remove digits and special chars
+            let clean = firstPart.replace(/[^a-zA-Z\s]/g, ' ').trim().toLowerCase();
+
+            // Handle synonyms
+            if (locationSynonyms[clean]) {
+                clean = locationSynonyms[clean].toLowerCase();
+            }
+
+            if (clean.length >= 2) {
+                loc = clean.replace(/\b\w/g, c => c.toUpperCase());
+            }
+        }
+        locMap[loc] = (locMap[loc] || 0) + 1;
+    });
+
+    const locations = Object.entries(locMap)
+        .map(([name, count]) => ({ name, count }))
+        .filter(item => item.name !== 'Unknown')
+        .sort((a, b) => b.count - a.count);
+
+    // Process Skills
+    const skillMap: Record<string, number> = {};
+    items.forEach(item => {
+        if (item.skills) {
+            // Split by comma, maybe semicolon too if needed, and trim
+            const skillsStart = item.skills.split(',').map((s: string) => s.trim());
+            skillsStart.forEach((skill: string) => {
+                if (skill) {
+                    skillMap[skill] = (skillMap[skill] || 0) + 1;
+                }
+            });
+        }
+    });
+
+    const skills = Object.entries(skillMap)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+
+    // Process Clients
+    const clientMap: Record<string, number> = {};
+    items.forEach(item => {
+        const client = item.client?.trim() || 'Unknown';
+        clientMap[client] = (clientMap[client] || 0) + 1;
+    });
+
+    const clients = Object.entries(clientMap)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+
+    // Process Roles
+    const roleMap: Record<string, number> = {};
+    items.forEach(item => {
+        const role = item.roleDesignation?.trim() || 'Unknown';
+        roleMap[role] = (roleMap[role] || 0) + 1;
+    });
+
+    const roles = Object.entries(roleMap)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+
+    // Process Verticals (Industry Type)
+    const verticalMap: Record<string, number> = {};
+    items.forEach(item => {
+        const vertical = item.vertical?.trim() || 'Unknown';
+        verticalMap[vertical] = (verticalMap[vertical] || 0) + 1;
+    });
+
+    const verticals = Object.entries(verticalMap)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+
+    // Process Department Types (Domain)
+    const deptTypeMap: Record<string, number> = {};
+    items.forEach(item => {
+        const deptType = item['department type']?.trim() || 'Unknown';
+        deptTypeMap[deptType] = (deptTypeMap[deptType] || 0) + 1;
+    });
+
+    const deptTypes = Object.entries(deptTypeMap)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+
+    return { locations, skills, clients, roles, verticals, deptTypes };
+};
+
 export default function CandidateDashboard() {
     const navigate = useNavigate();
     const [data, setData] = useState<CandidateData[]>([]);
-    const [allLocationData, setAllLocationData] = useState<ChartData[]>([]);
+    const [isDarkMode, setIsDarkMode] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    // Filter States
     const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
-
-    const [allSkillsData, setAllSkillsData] = useState<ChartData[]>([]);
     const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-
-    const [allClientData, setAllClientData] = useState<ChartData[]>([]);
     const [selectedClients, setSelectedClients] = useState<string[]>([]);
-
-    const [allRoleData, setAllRoleData] = useState<ChartData[]>([]);
     const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
-
-    const [allVerticalData, setAllVerticalData] = useState<ChartData[]>([]);
     const [selectedVerticals, setSelectedVerticals] = useState<string[]>([]);
 
+    // Dropdown UI States
     const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-
-    const [allDepartmentTypeData, setAllDepartmentTypeData] = useState<ChartData[]>([]);
+    const [tempSelectedItems, setTempSelectedItems] = useState<string[]>([]); // Current selection in open dropdown
 
     // Search States for Dropdowns
     const [clientSearch, setClientSearch] = useState('');
@@ -120,11 +223,6 @@ export default function CandidateDashboard() {
     const [locationSearch, setLocationSearch] = useState('');
     const [skillSearch, setSkillSearch] = useState('');
     const [verticalSearch, setVerticalSearch] = useState('');
-
-    const [isDarkMode, setIsDarkMode] = useState(false);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
 
     // Add styles for icon animation
     const styles = `
@@ -159,6 +257,7 @@ export default function CandidateDashboard() {
         axis: { stroke: isDarkMode ? '#94a3b8' : '#64748b' }
     };
 
+    // Load Data
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -172,7 +271,6 @@ export default function CandidateDashboard() {
                 const jsonData = XLSX.utils.sheet_to_json<CandidateData>(worksheet);
 
                 setData(jsonData);
-                processCharts(jsonData);
                 setLoading(false);
             } catch (err: any) {
                 console.error(err);
@@ -184,354 +282,299 @@ export default function CandidateDashboard() {
         fetchData();
     }, []);
 
-    const processCharts = (items: CandidateData[]) => {
-        // Process Locations
-        const locMap: Record<string, number> = {};
-        const locationSynonyms: Record<string, string> = {
-            'bengaluru': 'Bangalore',
-            'gurugram': 'Gurgaon',
-            'bombay': 'Mumbai',
-            'calcutta': 'Kolkata',
-            'madras': 'Chennai',
-            'new delhi': 'Delhi',
-            'delhi ncr': 'Delhi'
-        };
+    // 1. Process Master Data (for Dropdown Options - always based on full dataset)
+    const masterChartData = useMemo(() => processData(data), [data]);
 
-        items.forEach(item => {
-            let rawLoc = item.Location?.toString().trim();
-            let loc = 'Unknown';
+    // 2. Compute Filtered Data (based on applied selections)
+    const filteredData = useMemo(() => {
+        return data.filter(item => {
+            if (selectedClients.length > 0 && !selectedClients.includes(item.client?.trim() || 'Unknown')) return false;
+            if (selectedRoles.length > 0 && !selectedRoles.includes(item.roleDesignation?.trim() || 'Unknown')) return false;
 
-            if (rawLoc && rawLoc.toLowerCase() !== 'nan' && rawLoc.toLowerCase() !== 'null') {
-                // Heuristic: Split by common delimiters and take the first part (City)
-                let firstPart = rawLoc.split(/[,/\-–()]/)[0].trim();
-
-                // Aggressive cleanup: remove digits and special chars
-                let clean = firstPart.replace(/[^a-zA-Z\s]/g, ' ').trim().toLowerCase();
-
-                // Handle synonyms
-                if (locationSynonyms[clean]) {
-                    clean = locationSynonyms[clean].toLowerCase();
+            // Location matching logic (needs to match heuristic used in processData)
+            if (selectedLocations.length > 0) {
+                let rawLoc = item.Location?.toString().trim();
+                let loc = 'Unknown';
+                if (rawLoc && rawLoc.toLowerCase() !== 'nan' && rawLoc.toLowerCase() !== 'null') {
+                    // Heuristic: Split by common delimiters and take the first part (City)
+                    let firstPart = rawLoc.split(/[,/\-–()]/)[0].trim();
+                    let clean = firstPart.replace(/[^a-zA-Z\s]/g, ' ').trim().toLowerCase();
+                    const locationSynonyms: Record<string, string> = {
+                        'bengaluru': 'Bangalore', 'gurugram': 'Gurgaon', 'bombay': 'Mumbai',
+                        'calcutta': 'Kolkata', 'madras': 'Chennai', 'new delhi': 'Delhi', 'delhi ncr': 'Delhi'
+                    };
+                    if (locationSynonyms[clean]) clean = locationSynonyms[clean].toLowerCase();
+                    if (clean.length >= 2) loc = clean.replace(/\b\w/g, c => c.toUpperCase());
                 }
-
-                if (clean.length >= 2) {
-                    loc = clean.replace(/\b\w/g, c => c.toUpperCase());
-                }
+                // Check if the standardized location is in selectedLocations
+                if (!selectedLocations.includes(loc)) return false;
             }
-            locMap[loc] = (locMap[loc] || 0) + 1;
-        });
 
-        const locChart = Object.entries(locMap)
-            .map(([name, count]) => ({ name, count }))
-            .filter(item => item.name !== 'Unknown')
-            .sort((a, b) => b.count - a.count);
-
-        setAllLocationData(locChart);
-
-        // Process Skills
-        const skillMap: Record<string, number> = {};
-        items.forEach(item => {
-            if (item.skills) {
-                // Split by comma, maybe semicolon too if needed, and trim
-                const skills = item.skills.split(',').map(s => s.trim());
-                skills.forEach(skill => {
-                    if (skill) {
-                        skillMap[skill] = (skillMap[skill] || 0) + 1;
-                    }
-                });
+            // Skill matching logic (contains ANY of selected skills)
+            if (selectedSkills.length > 0) {
+                if (!item.skills) return false;
+                const itemSkills = item.skills.split(',').map((s: string) => s.trim());
+                // Logic: Does the candidate have ANY of the selected skills? Or ALL? 
+                // Usually filters are additive (OR within category), but here skills are a list.
+                // Assuming OR logic: Show candidate if they have at least one selected skill.
+                const hasSkill = itemSkills.some((s: string) => selectedSkills.includes(s));
+                if (!hasSkill) return false;
             }
+
+            if (selectedVerticals.length > 0 && !selectedVerticals.includes(item.vertical?.trim() || 'Unknown')) return false;
+
+            return true;
         });
+    }, [data, selectedClients, selectedRoles, selectedLocations, selectedSkills, selectedVerticals]);
 
-        const skillChart = Object.entries(skillMap)
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count);
+    // 3. Process Filtered Data (for Metrics & Charts)
+    const filteredChartData = useMemo(() => processData(filteredData), [filteredData]);
 
-        setAllSkillsData(skillChart);
-
-        // Process Clients
-        const clientMap: Record<string, number> = {};
-        items.forEach(item => {
-            const client = item.client?.trim() || 'Unknown';
-            clientMap[client] = (clientMap[client] || 0) + 1;
-        });
-
-        const clientChart = Object.entries(clientMap)
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count);
-
-        setAllClientData(clientChart);
-
-        // Process Roles
-        const roleMap: Record<string, number> = {};
-        items.forEach(item => {
-            const role = item.roleDesignation?.trim() || 'Unknown';
-            roleMap[role] = (roleMap[role] || 0) + 1;
-        });
-
-        const roleChart = Object.entries(roleMap)
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count);
-
-        setAllRoleData(roleChart);
-
-        // Process Verticals (Industry Type)
-        const verticalMap: Record<string, number> = {};
-        items.forEach(item => {
-            const vertical = item.vertical?.trim() || 'Unknown';
-            verticalMap[vertical] = (verticalMap[vertical] || 0) + 1;
-        });
-
-        const verticalChart = Object.entries(verticalMap)
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count);
-
-        setAllVerticalData(verticalChart);
-
-        // Process Department Types (Domain)
-        const deptTypeMap: Record<string, number> = {};
-        items.forEach(item => {
-            const deptType = item['department type']?.trim() || 'Unknown';
-            deptTypeMap[deptType] = (deptTypeMap[deptType] || 0) + 1;
-        });
-
-        const deptTypeChart = Object.entries(deptTypeMap)
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count);
-
-        setAllDepartmentTypeData(deptTypeChart);
+    const handleOpenDropdown = (dropdown: string, currentSelection: string[]) => {
+        if (activeDropdown === dropdown) {
+            setActiveDropdown(null);
+        } else {
+            setActiveDropdown(dropdown);
+            setTempSelectedItems([...currentSelection]);
+        }
     };
 
-    // Derived State
-    const displayedClients = selectedClients.length === 0
-        ? allClientData.slice(0, 5)
-        : allClientData.filter(c => selectedClients.includes(c.name));
-
-    const toggleClientSelection = (clientName: string) => {
-        setSelectedClients(prev => {
-            if (prev.includes(clientName)) {
-                return prev.filter(c => c !== clientName);
-            } else {
-                return [...prev, clientName];
-            }
+    const handleToggleTempSelection = (item: string) => {
+        setTempSelectedItems(prev => {
+            if (prev.includes(item)) return prev.filter(i => i !== item);
+            return [...prev, item];
         });
     };
 
-    const displayedRoles = selectedRoles.length === 0
-        ? allRoleData.slice(0, 5)
-        : allRoleData.filter(r => selectedRoles.includes(r.name));
-
-    const toggleRoleSelection = (roleName: string) => {
-        setSelectedRoles(prev => {
-            if (prev.includes(roleName)) {
-                return prev.filter(r => r !== roleName);
-            } else {
-                return [...prev, roleName];
-            }
-        });
+    const handleApplyFilter = (dropdown: string) => {
+        switch (dropdown) {
+            case 'Clients': setSelectedClients(tempSelectedItems); break;
+            case 'Roles': setSelectedRoles(tempSelectedItems); break;
+            case 'Locations': setSelectedLocations(tempSelectedItems); break;
+            case 'Skills': setSelectedSkills(tempSelectedItems); break;
+            case 'Industry': setSelectedVerticals(tempSelectedItems); break;
+        }
+        setActiveDropdown(null);
     };
 
-    const displayedLocations = selectedLocations.length === 0
-        ? allLocationData.slice(0, 5)
-        : allLocationData.filter(l => selectedLocations.includes(l.name));
-
-    const toggleLocationSelection = (locName: string) => {
-        setSelectedLocations(prev => {
-            if (prev.includes(locName)) {
-                return prev.filter(l => l !== locName);
-            } else {
-                return [...prev, locName];
-            }
-        });
+    const handleClearFilter = (dropdown: string) => {
+        switch (dropdown) {
+            case 'Clients': setSelectedClients([]); break;
+            case 'Roles': setSelectedRoles([]); break;
+            case 'Locations': setSelectedLocations([]); break;
+            case 'Skills': setSelectedSkills([]); break;
+            case 'Industry': setSelectedVerticals([]); break;
+        }
+        setActiveDropdown(null);
     };
 
-    const displayedSkills = selectedSkills.length === 0
-        ? allSkillsData.slice(0, 5)
-        : allSkillsData.filter(s => selectedSkills.includes(s.name));
+    const renderFilterDropdown = (
+        label: string,
+        data: ChartData[], // Options come from Master Data
+        selected: string[], // Currently applied selection (for rendering button badge)
+        search: string,
+        setSearch: (s: string) => void,
+        dropdownKey: string
+    ) => {
+        const isOpen = activeDropdown === dropdownKey;
 
-    const toggleSkillSelection = (skillName: string) => {
-        setSelectedSkills(prev => {
-            if (prev.includes(skillName)) {
-                return prev.filter(s => s !== skillName);
-            } else {
-                return [...prev, skillName];
-            }
-        });
+        return (
+            <div style={{ position: 'relative', flex: 1, minWidth: '180px' }}>
+                <button
+                    onClick={() => handleOpenDropdown(dropdownKey, selected)}
+                    style={{
+                        background: isDarkMode ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.8)',
+                        color: isDarkMode ? '#f8fafc' : '#1e293b',
+                        border: '1px solid var(--card-border)',
+                        borderRadius: '8px',
+                        padding: '0.75rem 1rem',
+                        fontSize: '0.875rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        width: '100%',
+                        justifyContent: 'space-between',
+                        backdropFilter: 'blur(8px)',
+                        transition: 'all 0.2s ease',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ fontWeight: 500 }}>{label}</span>
+                        {selected.length > 0 && (
+                            <span style={{
+                                background: '#3b82f6',
+                                color: 'white',
+                                fontSize: '0.7rem',
+                                padding: '0.1rem 0.4rem',
+                                borderRadius: '999px',
+                                minWidth: '1.2rem',
+                                textAlign: 'center'
+                            }}>
+                                {selected.length}
+                            </span>
+                        )}
+                    </div>
+                    <span style={{ fontSize: '0.75rem', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
+                </button>
+
+                {isOpen && (
+                    <div style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 0.5rem)',
+                        left: 0,
+                        marginBottom: '1rem',
+                        background: isDarkMode ? '#1e293b' : '#ffffff',
+                        border: '1px solid var(--card-border)',
+                        borderRadius: '12px',
+                        padding: '0.5rem',
+                        zIndex: 1000,
+                        width: '100%',
+                        minWidth: '240px', // Increased width for buttons
+                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                        maxHeight: '400px',
+                        display: 'flex',
+                        flexDirection: 'column'
+                    }}>
+                        {/* Header: Search */}
+                        <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--card-border)' }}>
+                            <input
+                                type="text"
+                                placeholder={`Search ${label}...`}
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '8px 12px',
+                                    borderRadius: '6px',
+                                    border: '1px solid var(--card-border)',
+                                    background: isDarkMode ? '#0f172a' : '#f1f5f9',
+                                    color: isDarkMode ? '#f8fafc' : '#1e293b',
+                                    fontSize: '0.875rem',
+                                    outline: 'none'
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                autoFocus
+                            />
+                        </div>
+
+                        {/* Body: List */}
+                        <div style={{ overflowY: 'auto', flex: 1, maxHeight: '250px' }}>
+                            {/* Clear Option */}
+                            <div style={{
+                                padding: '0.5rem',
+                                fontSize: '0.75rem',
+                                color: '#ef4444',
+                                cursor: 'pointer',
+                                textAlign: 'center',
+                                fontWeight: 500,
+                                borderBottom: '1px solid var(--card-border)'
+                            }}
+                                onClick={() => {
+                                    handleClearFilter(dropdownKey);
+                                    setSearch('');
+                                }}
+                            >
+                                Clear Selection
+                            </div>
+
+                            {data.filter(item => item.name.toLowerCase().includes(search.toLowerCase())).map(item => (
+                                <div
+                                    key={item.name}
+                                    onClick={() => handleToggleTempSelection(item.name)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.75rem',
+                                        padding: '0.5rem 0.75rem',
+                                        cursor: 'pointer',
+                                        color: isDarkMode ? '#f8fafc' : '#1e293b',
+                                        fontSize: '0.875rem',
+                                        borderRadius: '6px',
+                                        transition: 'background 0.2s',
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = isDarkMode ? '#334155' : '#f1f5f9'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={tempSelectedItems.includes(item.name)}
+                                        readOnly
+                                        style={{ cursor: 'pointer', accentColor: '#3b82f6' }}
+                                    />
+                                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
+                                        {item.name || 'Unknown'}
+                                    </span>
+                                    <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{item.count}</span>
+                                </div>
+                            ))}
+                            {data.length === 0 && (
+                                <div style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>
+                                    No results found
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer: Actions */}
+                        <div style={{
+                            padding: '0.75rem 0.5rem 0.25rem 0.5rem',
+                            borderTop: '1px solid var(--card-border)',
+                            display: 'flex',
+                            gap: '0.5rem',
+                            justifyContent: 'space-between'
+                        }}>
+                            <button
+                                onClick={() => setActiveDropdown(null)}
+                                style={{
+                                    flex: 1,
+                                    padding: '0.5rem',
+                                    borderRadius: '6px',
+                                    border: '1px solid var(--card-border)',
+                                    background: 'transparent',
+                                    color: isDarkMode ? '#94a3b8' : '#64748b',
+                                    cursor: 'pointer',
+                                    fontSize: '0.875rem',
+                                    fontWeight: 500
+                                }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => handleApplyFilter(dropdownKey)}
+                                style={{
+                                    flex: 1,
+                                    padding: '0.5rem',
+                                    borderRadius: '6px',
+                                    border: 'none',
+                                    background: '#3b82f6',
+                                    color: 'white',
+                                    cursor: 'pointer',
+                                    fontSize: '0.875rem',
+                                    fontWeight: 600,
+                                    boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)'
+                                }}
+                            >
+                                Submit
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
     };
-
-    const displayedVerticals = selectedVerticals.length === 0
-        ? allVerticalData.slice(0, 5)
-        : allVerticalData.filter(v => selectedVerticals.includes(v.name));
-
-    const toggleVerticalSelection = (verticalName: string) => {
-        setSelectedVerticals(prev => {
-            if (prev.includes(verticalName)) {
-                return prev.filter(v => v !== verticalName);
-            } else {
-                return [...prev, verticalName];
-            }
-        });
-    };
-
-    const displayedDepartmentTypes = allDepartmentTypeData;
 
     // Metrics
-    const totalCandidates = data.length;
-    const uniqueLocations = allLocationData.length;
-    const uniqueSkills = allSkillsData.length;
-
-    if (loading && data.length === 0) {
-        // Allow rendering even if loading, handled by internal spinners
-    }
+    const totalCandidates = filteredData.length;
+    const uniqueLocations = filteredChartData.locations.length;
+    const uniqueSkills = filteredChartData.skills.length;
+    const uniqueRoles = filteredChartData.roles.length;
+    const uniqueClients = filteredChartData.clients.length;
 
     if (error) return (
         <div style={{ padding: '2rem', textAlign: 'center', color: '#f87171' }}>
             <h2>Error Loading Data</h2>
             <p>{error}</p>
-        </div>
-    );
-
-    const renderFilterDropdown = (
-        label: string,
-        data: ChartData[],
-        selected: string[],
-        toggleSelection: (name: string) => void,
-        resetSelection: () => void,
-        search: string,
-        setSearch: (s: string) => void,
-        isOpen: boolean,
-        setIsOpen: (o: boolean) => void
-    ) => (
-        <div style={{ position: 'relative', flex: 1, minWidth: '180px' }}>
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                style={{
-                    background: isDarkMode ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.8)',
-                    color: isDarkMode ? '#f8fafc' : '#1e293b',
-                    border: '1px solid var(--card-border)',
-                    borderRadius: '8px',
-                    padding: '0.75rem 1rem',
-                    fontSize: '0.875rem',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    width: '100%',
-                    justifyContent: 'space-between',
-                    backdropFilter: 'blur(8px)',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                }}
-            >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontWeight: 500 }}>{label}</span>
-                    {selected.length > 0 && (
-                        <span style={{
-                            background: '#3b82f6',
-                            color: 'white',
-                            fontSize: '0.7rem',
-                            padding: '0.1rem 0.4rem',
-                            borderRadius: '999px',
-                            minWidth: '1.2rem',
-                            textAlign: 'center'
-                        }}>
-                            {selected.length}
-                        </span>
-                    )}
-                </div>
-                <span style={{ fontSize: '0.75rem', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
-            </button>
-
-            {isOpen && (
-                <div style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 0.5rem)',
-                    left: 0,
-                    marginBottom: '1rem',
-                    background: isDarkMode ? '#1e293b' : '#ffffff',
-                    border: '1px solid var(--card-border)',
-                    borderRadius: '12px',
-                    padding: '0.5rem',
-                    zIndex: 1000,
-                    width: '100%',
-                    minWidth: '200px',
-                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                    maxHeight: '300px',
-                    overflowY: 'auto'
-                }}>
-                    <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--card-border)' }}>
-                        <input
-                            type="text"
-                            placeholder={`Search ${label}...`}
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            style={{
-                                width: '100%',
-                                padding: '8px 12px',
-                                borderRadius: '6px',
-                                border: '1px solid var(--card-border)',
-                                background: isDarkMode ? '#0f172a' : '#f1f5f9',
-                                color: isDarkMode ? '#f8fafc' : '#1e293b',
-                                fontSize: '0.875rem',
-                                outline: 'none'
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            autoFocus
-                        />
-                    </div>
-                    <div style={{
-                        padding: '0.5rem',
-                        borderBottom: '1px solid var(--card-border)',
-                        marginBottom: '0.25rem',
-                        fontSize: '0.75rem',
-                        color: '#ef4444',
-                        cursor: 'pointer',
-                        textAlign: 'center',
-                        fontWeight: 500
-                    }}
-                        onClick={() => {
-                            resetSelection();
-                            setSearch('');
-                            setIsOpen(false);
-                        }}
-                    >
-                        Clear Filters
-                    </div>
-                    {data.filter(item => item.name.toLowerCase().includes(search.toLowerCase())).map(item => (
-                        <div
-                            key={item.name}
-                            onClick={() => toggleSelection(item.name)}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.75rem',
-                                padding: '0.5rem 0.75rem',
-                                cursor: 'pointer',
-                                color: isDarkMode ? '#f8fafc' : '#1e293b',
-                                fontSize: '0.875rem',
-                                borderRadius: '6px',
-                                transition: 'background 0.2s',
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = isDarkMode ? '#334155' : '#f1f5f9'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                        >
-                            <input
-                                type="checkbox"
-                                checked={selected.includes(item.name)}
-                                readOnly
-                                style={{ cursor: 'pointer', accentColor: '#3b82f6' }}
-                            />
-                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
-                                {item.name || 'Unknown'}
-                            </span>
-                            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{item.count}</span>
-                        </div>
-                    ))}
-                    {data.length === 0 && (
-                        <div style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>
-                            No results found
-                        </div>
-                    )}
-                </div>
-            )}
         </div>
     );
 
@@ -563,15 +606,6 @@ export default function CandidateDashboard() {
                         }}>
                             Talent Landscape
                         </h1>
-                        {/* <span style={{
-                            fontSize: '0.75rem',
-                            color: isDarkMode ? '#94a3b8' : '#64748b',
-                            fontWeight: 600,
-                            letterSpacing: '0.05em',
-                            textTransform: 'uppercase'
-                        }}>
-                            Recruitment Intelligence
-                        </span> */}
                     </div>
                 </div>
 
@@ -624,17 +658,17 @@ export default function CandidateDashboard() {
                     <Search size={16} />
                     <span>FILTERS:</span>
                 </div>
-                {renderFilterDropdown('Clients', allClientData, selectedClients, toggleClientSelection, () => setSelectedClients([]), clientSearch, setClientSearch, activeDropdown === 'Clients', (isOpen) => setActiveDropdown(isOpen ? 'Clients' : null))}
-                {renderFilterDropdown('Roles', allRoleData, selectedRoles, toggleRoleSelection, () => setSelectedRoles([]), roleSearch, setRoleSearch, activeDropdown === 'Roles', (isOpen) => setActiveDropdown(isOpen ? 'Roles' : null))}
-                {renderFilterDropdown('Locations', allLocationData, selectedLocations, toggleLocationSelection, () => setSelectedLocations([]), locationSearch, setLocationSearch, activeDropdown === 'Locations', (isOpen) => setActiveDropdown(isOpen ? 'Locations' : null))}
-                {renderFilterDropdown('Skills', allSkillsData, selectedSkills, toggleSkillSelection, () => setSelectedSkills([]), skillSearch, setSkillSearch, activeDropdown === 'Skills', (isOpen) => setActiveDropdown(isOpen ? 'Skills' : null))}
-                {renderFilterDropdown('Industry', allVerticalData, selectedVerticals, toggleVerticalSelection, () => setSelectedVerticals([]), verticalSearch, setVerticalSearch, activeDropdown === 'Industry', (isOpen) => setActiveDropdown(isOpen ? 'Industry' : null))}
+                {renderFilterDropdown('Clients', masterChartData.clients, selectedClients, clientSearch, setClientSearch, 'Clients')}
+                {renderFilterDropdown('Roles', masterChartData.roles, selectedRoles, roleSearch, setRoleSearch, 'Roles')}
+                {renderFilterDropdown('Locations', masterChartData.locations, selectedLocations, locationSearch, setLocationSearch, 'Locations')}
+                {renderFilterDropdown('Skills', masterChartData.skills, selectedSkills, skillSearch, setSkillSearch, 'Skills')}
+                {renderFilterDropdown('Industry', masterChartData.verticals, selectedVerticals, verticalSearch, setVerticalSearch, 'Industry')}
             </div>
 
             {/* Metrics Cards */}
             <style>{styles}</style>
             <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', marginBottom: '2rem', gap: '1.5rem' }}>
-                {/* Total Candidates */}
+                {/* Total Candidates (Filtered) */}
                 <div className="metric-card">
                     <div className="metric-content">
                         <span className="metric-label">No Of Samples</span>
@@ -645,7 +679,7 @@ export default function CandidateDashboard() {
                     </div>
                 </div>
 
-                {/* Unique Locations */}
+                {/* Unique Locations (Filtered) */}
                 <div className="metric-card">
                     <div className="metric-content">
                         <span className="metric-label">Unique Locations</span>
@@ -656,7 +690,7 @@ export default function CandidateDashboard() {
                     </div>
                 </div>
 
-                {/* Unique Skills */}
+                {/* Unique Skills (Filtered) */}
                 <div className="metric-card">
                     <div className="metric-content">
                         <span className="metric-label">Unique Skills</span>
@@ -667,22 +701,22 @@ export default function CandidateDashboard() {
                     </div>
                 </div>
 
-                {/* Unique Roles */}
+                {/* Unique Roles (Filtered) */}
                 <div className="metric-card">
                     <div className="metric-content">
                         <span className="metric-label">Unique Roles</span>
-                        <div className="metric-value">{allRoleData.length}</div>
+                        <div className="metric-value">{uniqueRoles}</div>
                     </div>
                     <div className="metric-icon-container" style={{ background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(251, 191, 36, 0.05) 100%)', color: '#fbbf24' }}>
                         <Briefcase size={28} strokeWidth={2} />
                     </div>
                 </div>
 
-                {/* Unique Clients */}
+                {/* Unique Clients (Filtered) */}
                 <div className="metric-card">
                     <div className="metric-content">
                         <span className="metric-label">Unique Clients</span>
-                        <div className="metric-value">{allClientData.length}</div>
+                        <div className="metric-value">{uniqueClients}</div>
                     </div>
                     <div className="metric-icon-container" style={{ background: 'linear-gradient(135deg, rgba(244, 63, 94, 0.2) 0%, rgba(244, 63, 94, 0.05) 100%)', color: '#f43f5e' }}>
                         <Building size={28} strokeWidth={2} />
@@ -703,7 +737,7 @@ export default function CandidateDashboard() {
                     </div>
                     <div className="chart-container">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={displayedClients} layout="vertical" margin={{ left: 40, right: 40 }}>
+                            <BarChart data={filteredChartData.clients.slice(0, 5)} layout="vertical" margin={{ left: 40, right: 40 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.grid.stroke} horizontal={true} vertical={true} />
                                 <XAxis type="number" stroke={chartStyles.axis.stroke} axisLine={false} tickLine={false} />
                                 <YAxis dataKey="name" type="category" stroke={chartStyles.axis.stroke} width={100} axisLine={false} tickLine={false} />
@@ -713,7 +747,7 @@ export default function CandidateDashboard() {
                                     cursor={chartStyles.cursor}
                                 />
                                 <Bar dataKey="count" fill="#a78bfa" radius={[0, 4, 4, 0]}>
-                                    {displayedClients.map((_, index) => (
+                                    {filteredChartData.clients.slice(0, 5).map((_, index) => (
                                         <Cell key={`cell-${index}`} fill={CHART_COLORS[(index + 1) % CHART_COLORS.length]} />
                                     ))}
                                 </Bar>
@@ -735,7 +769,7 @@ export default function CandidateDashboard() {
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
-                                    data={displayedRoles}
+                                    data={filteredChartData.roles.slice(0, 5)}
                                     cx="35%"
                                     cy="50%"
                                     innerRadius={60}
@@ -745,7 +779,7 @@ export default function CandidateDashboard() {
                                     dataKey="count"
                                     nameKey="name"
                                 >
-                                    {displayedRoles.map((_, index) => (
+                                    {filteredChartData.roles.slice(0, 5).map((_, index) => (
                                         <Cell key={`cell-${index}`} fill={CHART_COLORS[(index + 3) % CHART_COLORS.length]} />
                                     ))}
                                 </Pie>
@@ -794,7 +828,7 @@ export default function CandidateDashboard() {
                             </div>
                         ) : null}
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={displayedLocations} layout="vertical" margin={{ left: 40, right: 40 }}>
+                            <BarChart data={filteredChartData.locations.slice(0, 5)} layout="vertical" margin={{ left: 40, right: 40 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.grid.stroke} horizontal={true} vertical={true} />
                                 <XAxis type="number" stroke={chartStyles.axis.stroke} axisLine={false} tickLine={false} />
                                 <YAxis dataKey="name" type="category" stroke={chartStyles.axis.stroke} width={100} axisLine={false} tickLine={false} />
@@ -804,7 +838,7 @@ export default function CandidateDashboard() {
                                     cursor={chartStyles.cursor}
                                 />
                                 <Bar dataKey="count" fill="#8884d8" radius={[0, 4, 4, 0]}>
-                                    {displayedLocations.map((_, index) => (
+                                    {filteredChartData.locations.slice(0, 5).map((_, index) => (
                                         <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                                     ))}
                                 </Bar>
@@ -834,7 +868,7 @@ export default function CandidateDashboard() {
                             </div>
                         ) : null}
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={displayedSkills} layout="vertical" margin={{ left: 40, right: 40 }}>
+                            <BarChart data={filteredChartData.skills.slice(0, 5)} layout="vertical" margin={{ left: 40, right: 40 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.grid.stroke} horizontal={true} vertical={true} />
                                 <XAxis type="number" stroke={chartStyles.axis.stroke} axisLine={false} tickLine={false} />
                                 <YAxis dataKey="name" type="category" stroke={chartStyles.axis.stroke} width={100} axisLine={false} tickLine={false} />
@@ -844,7 +878,7 @@ export default function CandidateDashboard() {
                                     cursor={chartStyles.cursor}
                                 />
                                 <Bar dataKey="count" fill="#34d399" radius={[0, 4, 4, 0]}>
-                                    {displayedSkills.map((_, index) => (
+                                    {filteredChartData.skills.slice(0, 5).map((_, index) => (
                                         <Cell key={`cell-${index}`} fill={CHART_COLORS[(index + 2) % CHART_COLORS.length]} />
                                     ))}
                                 </Bar>
@@ -876,7 +910,7 @@ export default function CandidateDashboard() {
                             </div>
                         ) : null}
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={displayedVerticals} layout="vertical" margin={{ left: 40, right: 40 }}>
+                            <BarChart data={filteredChartData.verticals.slice(0, 5)} layout="vertical" margin={{ left: 40, right: 40 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.grid.stroke} horizontal={true} vertical={true} />
                                 <XAxis type="number" stroke={chartStyles.axis.stroke} axisLine={false} tickLine={false} />
                                 <YAxis dataKey="name" type="category" stroke={chartStyles.axis.stroke} width={100} axisLine={false} tickLine={false} />
@@ -886,7 +920,7 @@ export default function CandidateDashboard() {
                                     cursor={chartStyles.cursor}
                                 />
                                 <Bar dataKey="count" fill="#60a5fa" radius={[0, 4, 4, 0]}>
-                                    {displayedVerticals.map((_, index) => (
+                                    {filteredChartData.verticals.slice(0, 5).map((_, index) => (
                                         <Cell key={`cell-${index}`} fill={CHART_COLORS[(index + 4) % CHART_COLORS.length]} />
                                     ))}
                                 </Bar>
@@ -917,7 +951,7 @@ export default function CandidateDashboard() {
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
-                                    data={displayedDepartmentTypes}
+                                    data={filteredChartData.deptTypes}
                                     cx="35%"
                                     cy="50%"
                                     innerRadius={0}
@@ -927,7 +961,7 @@ export default function CandidateDashboard() {
                                     dataKey="count"
                                     nameKey="name"
                                 >
-                                    {displayedDepartmentTypes.map((_, index) => (
+                                    {filteredChartData.deptTypes.map((_, index) => (
                                         <Cell key={`cell-${index}`} fill={CHART_COLORS[(index + 5) % CHART_COLORS.length]} />
                                     ))}
                                 </Pie>
@@ -948,158 +982,6 @@ export default function CandidateDashboard() {
                 </div>
             </div>
 
-
-
-            {/* Data Table */}
-            {/* <div className="glass-card" style={{ marginTop: '2rem' }}>
-                <h2 style={{ marginBottom: '1.5rem', fontSize: '1.25rem' }}>Candidate Details</h2>
-                <div className="table-container" style={{ maxHeight: '500px', overflowY: 'auto', overflowX: 'hidden' }}>
-                    <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 0.5rem' }}>
-                        <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
-                            <tr>
-                                <th style={{ textAlign: 'left', padding: '1rem', color: isDarkMode ? '#94a3b8' : '#64748b', fontWeight: 600, fontSize: '0.875rem' }}>ID</th>
-                                <th style={{ textAlign: 'left', padding: '1rem', color: isDarkMode ? '#94a3b8' : '#64748b', fontWeight: 600, fontSize: '0.875rem' }}>Name</th>
-                                <th style={{ textAlign: 'left', padding: '1rem', color: isDarkMode ? '#94a3b8' : '#64748b', fontWeight: 600, fontSize: '0.875rem' }}>Location</th>
-                                <th style={{ textAlign: 'left', padding: '1rem', color: isDarkMode ? '#94a3b8' : '#64748b', fontWeight: 600, fontSize: '0.875rem' }}>Role</th>
-                                <th style={{ textAlign: 'left', padding: '1rem', color: isDarkMode ? '#94a3b8' : '#64748b', fontWeight: 600, fontSize: '0.875rem' }}>Industry Type</th>
-                                <th style={{ textAlign: 'left', padding: '1rem', color: isDarkMode ? '#94a3b8' : '#64748b', fontWeight: 600, fontSize: '0.875rem' }}>Domain</th>
-                                <th style={{ textAlign: 'left', padding: '1rem', color: isDarkMode ? '#94a3b8' : '#64748b', fontWeight: 600, fontSize: '0.875rem' }}>Experience</th>
-                                <th style={{ textAlign: 'left', padding: '1rem', color: isDarkMode ? '#94a3b8' : '#64748b', fontWeight: 600, fontSize: '0.875rem' }}>Skills</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {paginatedData.map((row, i) => (
-                                <tr
-                                    key={i}
-                                    onClick={() => {
-                                        setSelectedCandidate(row);
-                                        setIsModalOpen(true);
-                                    }}
-                                    style={{
-                                        backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.5)' : 'rgba(255, 255, 255, 0.5)',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                        // Hover effect is handled by CSS usually, but we can do inline style trick or class
-                                        // We'll rely on a class "table-row-hover" if it exists, or just basic transform
-                                    }}
-                                    className="table-row-hover"
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(51, 65, 85, 0.8)' : 'rgba(241, 245, 249, 0.9)';
-                                        e.currentTarget.style.transform = 'scale(1.002)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(30, 41, 59, 0.5)' : 'rgba(255, 255, 255, 0.5)';
-                                        e.currentTarget.style.transform = 'scale(1)';
-                                    }}
-                                >
-                                    <td style={{ padding: '1rem', borderTopLeftRadius: '8px', borderBottomLeftRadius: '8px' }}>{row['Employee ID']}</td>
-                                    <td style={{ padding: '1rem', fontWeight: 500 }}>{row['Candidate Name']}</td>
-                                    <td style={{ padding: '1rem' }}>{row['Location']}</td>
-                                    <td style={{ padding: '1rem' }}>{row['roleDesignation']}</td>
-                                    <td style={{ padding: '1rem' }}>{row['vertical']}</td>
-                                    <td style={{ padding: '1rem' }}>{row['department type']}</td>
-                                    <td style={{ padding: '1rem' }}>{row['experienceYears']}</td>
-                                    <td style={{ padding: '1rem', borderTopRightRadius: '8px', borderBottomRightRadius: '8px', maxWidth: '300px' }}>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-                                            {row.skills ? row.skills.split(',').map((skill, idx) => (
-                                                <span key={idx} style={{
-                                                    display: 'inline-block',
-                                                    backgroundColor: isDarkMode ? 'rgba(96, 165, 250, 0.2)' : 'rgba(37, 99, 235, 0.1)',
-                                                    color: isDarkMode ? '#60a5fa' : '#2563eb',
-                                                    padding: '0.25rem 0.6rem',
-                                                    borderRadius: '9999px',
-                                                    fontSize: '0.75rem',
-                                                    fontWeight: 500
-                                                }}>
-                                                    {skill.trim()}
-                                                </span>
-                                            )) : null}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', padding: '0 1rem' }}>
-                    <div style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
-                        Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCandidates)} of {totalCandidates} entries
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button
-                            onClick={() => goToPage(currentPage - 1)}
-                            disabled={currentPage === 1}
-                            style={{
-                                padding: '0.5rem 1rem',
-                                borderRadius: '8px',
-                                border: '1px solid ' + (isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'),
-                                background: currentPage === 1
-                                    ? (isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)')
-                                    : (isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'),
-                                color: currentPage === 1
-                                    ? (isDarkMode ? '#64748b' : '#94a3b8')
-                                    : (isDarkMode ? '#fff' : '#1e293b'),
-                                cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            Previous
-                        </button>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                let pageNum = i + 1;
-                                if (totalPages > 5) {
-                                    if (currentPage > 3) {
-                                        pageNum = currentPage - 2 + i;
-                                    }
-                                    if (pageNum > totalPages) {
-                                        pageNum = totalPages - (4 - i);
-                                    }
-                                }
-
-                                return (
-                                    <button
-                                        key={pageNum}
-                                        onClick={() => goToPage(pageNum)}
-                                        style={{
-                                            width: '32px',
-                                            height: '32px',
-                                            borderRadius: '8px',
-                                            border: '1px solid ' + (currentPage === pageNum ? '#3b82f6' : (isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)')),
-                                            background: currentPage === pageNum ? '#3b82f6' : (isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'),
-                                            color: currentPage === pageNum ? '#fff' : (isDarkMode ? '#fff' : '#1e293b'),
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        {pageNum}
-                                    </button>
-                                )
-                            })}
-                        </div>
-                        <button
-                            onClick={() => goToPage(currentPage + 1)}
-                            disabled={currentPage === totalPages}
-                            style={{
-                                padding: '0.5rem 1rem',
-                                borderRadius: '8px',
-                                border: '1px solid ' + (isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'),
-                                background: currentPage === totalPages
-                                    ? (isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)')
-                                    : (isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'),
-                                color: currentPage === totalPages
-                                    ? (isDarkMode ? '#64748b' : '#94a3b8')
-                                    : (isDarkMode ? '#fff' : '#1e293b'),
-                                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            Next
-                        </button>
-                    </div>
-                </div>
-            </div> */}
             {/* AI Chatbot */}
             <DashboardChatbot data={data} />
         </div >
