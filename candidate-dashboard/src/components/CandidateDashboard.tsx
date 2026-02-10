@@ -358,6 +358,16 @@ export default function CandidateDashboard() {
     };
 
 
+    const handleClearFilter = (dropdown: string) => {
+        switch (dropdown) {
+            case 'Clients': setSelectedClients([]); break;
+            case 'Roles': setSelectedRoles([]); break;
+            case 'Locations': setSelectedLocations([]); break;
+            case 'Skills': setSelectedSkills([]); break;
+            case 'Industry': setSelectedVerticals([]); break;
+        }
+        setActiveDropdown(null);
+    };
 
     const handleGlobalClear = () => {
         setSelectedClients([]);
@@ -510,7 +520,7 @@ export default function CandidateDashboard() {
                             justifyContent: 'space-between'
                         }}>
                             <button
-                                onClick={handleGlobalClear}
+                                onClick={() => handleClearFilter(dropdownKey)}
                                 style={{
                                     flex: 1,
                                     padding: '0.5rem',
@@ -523,7 +533,7 @@ export default function CandidateDashboard() {
                                     fontWeight: 500
                                 }}
                             >
-                                Clear All
+                                Clear
                             </button>
                             <button
                                 onClick={() => setActiveDropdown(null)}
@@ -664,6 +674,29 @@ export default function CandidateDashboard() {
                 {renderFilterDropdown('Locations', masterChartData.locations, selectedLocations, locationSearch, setLocationSearch, 'Locations')}
                 {renderFilterDropdown('Skills', masterChartData.skills, selectedSkills, skillSearch, setSkillSearch, 'Skills')}
                 {renderFilterDropdown('Industry', masterChartData.verticals, selectedVerticals, verticalSearch, setVerticalSearch, 'Industry')}
+
+                <button
+                    onClick={handleGlobalClear}
+                    style={{
+                        marginLeft: 'auto',
+                        background: 'transparent',
+                        border: '1px solid #ef4444',
+                        color: '#ef4444',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        fontSize: '0.875rem',
+                        fontWeight: 500,
+                        transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                    Clear All
+                </button>
             </div>
 
             {/* Metrics Cards */}
