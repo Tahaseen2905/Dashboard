@@ -108,13 +108,12 @@ export default function CandidateDetails() {
         // Helper to count and sort
         const getCounts = (key: string, split = false) => {
             const map: Record<string, number> = {};
-            const skillNorm: Record<string, string> = {
-                'react js': 'React.js',
-                'reactjs': 'React.js',
-                'react.js': 'React.js',
-                'react': 'React.js',
-                'react. js': 'React.js',
-                'react  js': 'React.js'
+            const normalizeSkill = (s: string): string => {
+                const trimmed = s.trim();
+                if (!trimmed) return '';
+                const lower = trimmed.toLowerCase().replace(/[\s\._-]/g, '');
+                if (lower === 'react' || lower === 'reactjs') return 'React.js';
+                return trimmed;
             };
 
             items.forEach(item => {
@@ -122,18 +121,19 @@ export default function CandidateDetails() {
                 if (val) {
                     if (split) {
                         const uniqueItemValues = new Set<string>();
-                        val.toString().split(/[,;]/).forEach((s: string) => {
+                        val.toString().split(/[,;/|]/).forEach((s: string) => {
                             const trimmed = s.trim();
                             if (trimmed) {
-                                const normValue = key === 'skill' ? (skillNorm[trimmed.toLowerCase().replace(/\s+/g, ' ')] || trimmed) : trimmed;
-                                uniqueItemValues.add(normValue);
+                                const normValue = key === 'skill' ? normalizeSkill(trimmed) : trimmed;
+                                if (normValue) uniqueItemValues.add(normValue);
                             }
                         });
                         uniqueItemValues.forEach(v => {
                             map[v] = (map[v] || 0) + 1;
                         });
                     } else {
-                        const trimmed = val.toString().trim();
+                        let trimmed = val.toString().trim();
+                        if (trimmed === 'ITES Clients' && key === 'Domain') trimmed = 'ITES';
                         if (trimmed) map[trimmed] = (map[trimmed] || 0) + 1;
                     }
                 }
@@ -156,28 +156,28 @@ export default function CandidateDetails() {
     const masterFilterOptions = useMemo(() => processData(data), [data]);
 
     const filteredData = useMemo(() => {
-        const skillNorm: Record<string, string> = {
-            'react js': 'React.js',
-            'reactjs': 'React.js',
-            'react.js': 'React.js',
-            'react': 'React.js',
-            'react. js': 'React.js',
-            'react  js': 'React.js'
+        const normalizeSkill = (s: string): string => {
+            const trimmed = s.trim();
+            if (!trimmed) return '';
+            const lower = trimmed.toLowerCase().replace(/[\s\._-]/g, '');
+            if (lower === 'react' || lower === 'reactjs') return 'React.js';
+            return trimmed;
         };
 
         return data.filter(item => {
             if (selectedCompanies.length > 0 && !selectedCompanies.includes(item.company_name?.trim())) return false;
             if (selectedRoles.length > 0 && !selectedRoles.includes(item.designation?.trim())) return false;
             if (selectedLocations.length > 0 && !selectedLocations.includes(item.candidate_city?.trim())) return false;
-            if (selectedDomains.length > 0 && !selectedDomains.includes(item.Domain?.trim())) return false;
+
+            let itemDomain = item.Domain?.trim();
+            if (itemDomain === 'ITES Clients') itemDomain = 'ITES';
+            if (selectedDomains.length > 0 && !selectedDomains.includes(itemDomain)) return false;
+
             if (selectedITNonIT.length > 0 && !selectedITNonIT.includes(item['IT/Non IT']?.trim())) return false;
 
             if (selectedSkills.length > 0) {
                 if (!item.skill) return false;
-                const itemSkills = item.skill.split(/[,;]/).map((s: string) => {
-                    const trimmed = s.trim();
-                    return skillNorm[trimmed.toLowerCase().replace(/\s+/g, ' ')] || trimmed;
-                });
+                const itemSkills = item.skill.split(/[,;/|]/).map((s: string) => normalizeSkill(s)).filter(s => s !== '');
                 if (!itemSkills.some((s: string) => selectedSkills.includes(s))) return false;
             }
 
@@ -627,7 +627,7 @@ export default function CandidateDetails() {
                                     <td>
                                         {candidate['skill'] ? (
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-                                                {candidate['skill']?.split(/[,;]/).slice(0, 3).map((skill, i) => (
+                                                {candidate['skill']?.split(/[,;/|]/).slice(0, 3).map((skill, i) => (
                                                     <span key={i} style={{
                                                         background: isDarkMode ? 'rgba(52, 211, 153, 0.1)' : '#dcfce7',
                                                         color: isDarkMode ? '#34d399' : '#15803d',
@@ -638,9 +638,9 @@ export default function CandidateDetails() {
                                                         {skill.trim()}
                                                     </span>
                                                 ))}
-                                                {(candidate['skill']?.split(/[,;]/).length || 0) > 3 && (
+                                                {(candidate['skill']?.split(/[,;/|]/).length || 0) > 3 && (
                                                     <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                                                        +{(candidate['skill']?.split(/[,;]/).length || 0) - 3}
+                                                        +{(candidate['skill']?.split(/[,;/|]/).length || 0) - 3}
                                                     </span>
                                                 )}
                                             </div>

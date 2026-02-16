@@ -136,24 +136,23 @@ const processData = (items: CandidateData[]) => {
 
     // Process Skills
     const skillMap: Record<string, number> = {};
-    const skillNorm: Record<string, string> = {
-        'react js': 'React.js',
-        'reactjs': 'React.js',
-        'react.js': 'React.js',
-        'react': 'React.js',
-        'react. js': 'React.js',
-        'react  js': 'React.js'
+    const normalizeSkill = (s: string): string => {
+        const trimmed = s.trim();
+        if (!trimmed) return '';
+        const lower = trimmed.toLowerCase().replace(/[\s\._-]/g, '');
+        if (lower === 'react' || lower === 'reactjs') return 'React.js';
+        return trimmed;
     };
 
     items.forEach(item => {
         if (item.skill) {
-            // Split by comma or semicolon, trim, and normalize
-            const skillsStart = item.skill.split(/[,;]/).map((s: string) => s.trim());
+            // Split by comma, semicolon, slash, or pipe
+            const skillsStart = item.skill.split(/[,;/|]/).map((s: string) => s.trim());
             const uniqueItemSkills = new Set<string>();
 
             skillsStart.forEach((skill: string) => {
-                if (skill) {
-                    const normSkill = skillNorm[skill.toLowerCase().replace(/\s+/g, ' ')] || skill;
+                const normSkill = normalizeSkill(skill);
+                if (normSkill) {
                     uniqueItemSkills.add(normSkill);
                 }
             });
@@ -193,7 +192,8 @@ const processData = (items: CandidateData[]) => {
     // Process Verticals (Domain Type) -> Domain
     const verticalMap: Record<string, number> = {};
     items.forEach(item => {
-        const vertical = item.Domain?.trim() || 'Unknown';
+        let vertical = item.Domain?.trim() || 'Unknown';
+        if (vertical === 'ITES Clients') vertical = 'ITES';
         verticalMap[vertical] = (verticalMap[vertical] || 0) + 1;
     });
 
@@ -304,15 +304,19 @@ export default function CandidateDashboard() {
     // 2. Compute Filtered Data (based on applied selections)
     const filteredData = useMemo(() => {
         return data.filter(item => {
-            if (selectedClients.length > 0 && !selectedClients.includes(item.company_name?.trim() || 'Unknown')) return false;
-            if (selectedRoles.length > 0 && !selectedRoles.includes(item.designation?.trim() || 'Unknown')) return false;
+            // Client Filter
+            let itemClient = item.company_name?.trim() || 'Unknown';
+            if (selectedClients.length > 0 && !selectedClients.includes(itemClient)) return false;
 
-            // Location matching logic (needs to match heuristic used in processData)
+            // Role Filter
+            let itemDesignation = item.designation?.trim() || 'Unknown';
+            if (selectedRoles.length > 0 && !selectedRoles.includes(itemDesignation)) return false;
+
+            // Location Filter
             if (selectedLocations.length > 0) {
                 let rawLoc = item.candidate_city?.toString().trim();
                 let loc = 'Unknown';
                 if (rawLoc && rawLoc.toLowerCase() !== 'nan' && rawLoc.toLowerCase() !== 'null') {
-                    // Heuristic: Split by common delimiters and take the first part (City)
                     let firstPart = rawLoc.split(/[,/\-–()]/)[0].trim();
                     let clean = firstPart.replace(/[^a-zA-Z\s]/g, ' ').trim().toLowerCase();
                     const locationSynonyms: Record<string, string> = {
@@ -320,35 +324,31 @@ export default function CandidateDashboard() {
                         'calcutta': 'Kolkata', 'madras': 'Chennai', 'new delhi': 'Delhi', 'delhi ncr': 'Delhi'
                     };
                     if (locationSynonyms[clean]) clean = locationSynonyms[clean].toLowerCase();
-                    if (clean.length >= 2) loc = clean.replace(/\b\w/g, (c: string) => c.toUpperCase());
+                    if (clean.length >= 2) {
+                        loc = clean.replace(/\b\w/g, c => c.toUpperCase());
+                    }
                 }
-                // Check if the standardized location is in selectedLocations
                 if (!selectedLocations.includes(loc)) return false;
             }
 
-            // Skill matching logic (contains ANY of selected skills)
+            // Skill Filter
             if (selectedSkills.length > 0) {
                 if (!item.skill) return false;
-
-                const skillNorm: Record<string, string> = {
-                    'react js': 'React.js',
-                    'reactjs': 'React.js',
-                    'react.js': 'React.js',
-                    'react': 'React.js',
-                    'react. js': 'React.js',
-                    'react  js': 'React.js'
-                };
-
-                const itemSkills = item.skill.split(/[,;]/).map((s: string) => {
+                const normalizeSkill = (s: string): string => {
                     const trimmed = s.trim();
-                    return skillNorm[trimmed.toLowerCase().replace(/\s+/g, ' ')] || trimmed;
-                });
-
-                const hasSkill = itemSkills.some((s: string) => selectedSkills.includes(s));
-                if (!hasSkill) return false;
+                    if (!trimmed) return '';
+                    const lower = trimmed.toLowerCase().replace(/[\s\._-]/g, '');
+                    if (lower === 'react' || lower === 'reactjs') return 'React.js';
+                    return trimmed;
+                };
+                const itemSkills = item.skill.split(/[,;/|]/).map((s: string) => normalizeSkill(s)).filter(s => s !== '');
+                if (!itemSkills.some((s: string) => selectedSkills.includes(s))) return false;
             }
 
-            if (selectedVerticals.length > 0 && !selectedVerticals.includes(item.Domain?.trim() || 'Unknown')) return false;
+            // Domain Filter
+            let itemDomain = item.Domain?.trim() || 'Unknown';
+            if (itemDomain === 'ITES Clients') itemDomain = 'ITES';
+            if (selectedVerticals.length > 0 && !selectedVerticals.includes(itemDomain)) return false;
 
             return true;
         });
@@ -1003,7 +1003,7 @@ export default function CandidateDashboard() {
                 <div className="glass-card">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center' }}>
-                            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>IT/Non IT Distribution</h2>
+                            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>IT Distribution</h2>
                             <InfoTooltip text="Overview of candidates across different business domains." />
                         </div>
                     </div>
