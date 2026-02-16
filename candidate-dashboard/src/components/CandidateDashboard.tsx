@@ -19,14 +19,14 @@ import { Briefcase, MapPin, Users, Code, Search, Sun, Moon, Building, Info } fro
 import j2wLogo from '../assets/j2w.svg';
 
 interface CandidateData {
-    'Employee ID': string;
-    'Candidate Name': string;
-    'Location': string;
-    'skills': string;
-    'client': string;
-    'roleDesignation': string;
-    'vertical': string;
-    'department type': string;
+    'employee_id': string;
+    'full_name': string;
+    'candidate_city': string;
+    'skill': string;
+    'company_name': string;
+    'designation': string;
+    'Domain': string;
+    'IT/Non IT': string;
     [key: string]: any;
 }
 
@@ -107,7 +107,7 @@ const processData = (items: CandidateData[]) => {
     };
 
     items.forEach(item => {
-        let rawLoc = item.Location?.toString().trim();
+        let rawLoc = item.candidate_city?.toString().trim();
         let loc = 'Unknown';
 
         if (rawLoc && rawLoc.toLowerCase() !== 'nan' && rawLoc.toLowerCase() !== 'null') {
@@ -136,14 +136,30 @@ const processData = (items: CandidateData[]) => {
 
     // Process Skills
     const skillMap: Record<string, number> = {};
+    const skillNorm: Record<string, string> = {
+        'react js': 'React.js',
+        'reactjs': 'React.js',
+        'react.js': 'React.js',
+        'react': 'React.js',
+        'react. js': 'React.js',
+        'react  js': 'React.js'
+    };
+
     items.forEach(item => {
-        if (item.skills) {
-            // Split by comma, maybe semicolon too if needed, and trim
-            const skillsStart = item.skills.split(',').map((s: string) => s.trim());
+        if (item.skill) {
+            // Split by comma or semicolon, trim, and normalize
+            const skillsStart = item.skill.split(/[,;]/).map((s: string) => s.trim());
+            const uniqueItemSkills = new Set<string>();
+
             skillsStart.forEach((skill: string) => {
                 if (skill) {
-                    skillMap[skill] = (skillMap[skill] || 0) + 1;
+                    const normSkill = skillNorm[skill.toLowerCase().replace(/\s+/g, ' ')] || skill;
+                    uniqueItemSkills.add(normSkill);
                 }
+            });
+
+            uniqueItemSkills.forEach(skill => {
+                skillMap[skill] = (skillMap[skill] || 0) + 1;
             });
         }
     });
@@ -152,10 +168,10 @@ const processData = (items: CandidateData[]) => {
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count);
 
-    // Process Clients
+    // Process Companies
     const clientMap: Record<string, number> = {};
     items.forEach(item => {
-        const client = item.client?.trim() || 'Unknown';
+        const client = item.company_name?.trim() || 'Unknown';
         clientMap[client] = (clientMap[client] || 0) + 1;
     });
 
@@ -166,7 +182,7 @@ const processData = (items: CandidateData[]) => {
     // Process Roles
     const roleMap: Record<string, number> = {};
     items.forEach(item => {
-        const role = item.roleDesignation?.trim() || 'Unknown';
+        const role = item.designation?.trim() || 'Unknown';
         roleMap[role] = (roleMap[role] || 0) + 1;
     });
 
@@ -174,10 +190,10 @@ const processData = (items: CandidateData[]) => {
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count);
 
-    // Process Verticals (Industry Type)
+    // Process Verticals (Domain Type) -> Domain
     const verticalMap: Record<string, number> = {};
     items.forEach(item => {
-        const vertical = item.vertical?.trim() || 'Unknown';
+        const vertical = item.Domain?.trim() || 'Unknown';
         verticalMap[vertical] = (verticalMap[vertical] || 0) + 1;
     });
 
@@ -185,10 +201,10 @@ const processData = (items: CandidateData[]) => {
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count);
 
-    // Process Department Types (Domain)
+    // Process Department Types (Domain) -> IT/Non IT
     const deptTypeMap: Record<string, number> = {};
     items.forEach(item => {
-        const deptType = item['department type']?.trim() || 'Unknown';
+        const deptType = item['IT/Non IT']?.trim() || 'Unknown';
         deptTypeMap[deptType] = (deptTypeMap[deptType] || 0) + 1;
     });
 
@@ -261,7 +277,7 @@ export default function CandidateDashboard() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await fetch(`/align360_highlighted_replaced_with_NA.xlsx?v=${Date.now()}`);
+                const response = await fetch(`/final_excel.xlsx?v=${Date.now()}`);
                 if (!response.ok) throw new Error('Failed to fetch Excel file');
 
                 const arrayBuffer = await response.arrayBuffer();
@@ -288,12 +304,12 @@ export default function CandidateDashboard() {
     // 2. Compute Filtered Data (based on applied selections)
     const filteredData = useMemo(() => {
         return data.filter(item => {
-            if (selectedClients.length > 0 && !selectedClients.includes(item.client?.trim() || 'Unknown')) return false;
-            if (selectedRoles.length > 0 && !selectedRoles.includes(item.roleDesignation?.trim() || 'Unknown')) return false;
+            if (selectedClients.length > 0 && !selectedClients.includes(item.company_name?.trim() || 'Unknown')) return false;
+            if (selectedRoles.length > 0 && !selectedRoles.includes(item.designation?.trim() || 'Unknown')) return false;
 
             // Location matching logic (needs to match heuristic used in processData)
             if (selectedLocations.length > 0) {
-                let rawLoc = item.Location?.toString().trim();
+                let rawLoc = item.candidate_city?.toString().trim();
                 let loc = 'Unknown';
                 if (rawLoc && rawLoc.toLowerCase() !== 'nan' && rawLoc.toLowerCase() !== 'null') {
                     // Heuristic: Split by common delimiters and take the first part (City)
@@ -304,7 +320,7 @@ export default function CandidateDashboard() {
                         'calcutta': 'Kolkata', 'madras': 'Chennai', 'new delhi': 'Delhi', 'delhi ncr': 'Delhi'
                     };
                     if (locationSynonyms[clean]) clean = locationSynonyms[clean].toLowerCase();
-                    if (clean.length >= 2) loc = clean.replace(/\b\w/g, c => c.toUpperCase());
+                    if (clean.length >= 2) loc = clean.replace(/\b\w/g, (c: string) => c.toUpperCase());
                 }
                 // Check if the standardized location is in selectedLocations
                 if (!selectedLocations.includes(loc)) return false;
@@ -312,16 +328,27 @@ export default function CandidateDashboard() {
 
             // Skill matching logic (contains ANY of selected skills)
             if (selectedSkills.length > 0) {
-                if (!item.skills) return false;
-                const itemSkills = item.skills.split(',').map((s: string) => s.trim());
-                // Logic: Does the candidate have ANY of the selected skills? Or ALL? 
-                // Usually filters are additive (OR within category), but here skills are a list.
-                // Assuming OR logic: Show candidate if they have at least one selected skill.
+                if (!item.skill) return false;
+
+                const skillNorm: Record<string, string> = {
+                    'react js': 'React.js',
+                    'reactjs': 'React.js',
+                    'react.js': 'React.js',
+                    'react': 'React.js',
+                    'react. js': 'React.js',
+                    'react  js': 'React.js'
+                };
+
+                const itemSkills = item.skill.split(/[,;]/).map((s: string) => {
+                    const trimmed = s.trim();
+                    return skillNorm[trimmed.toLowerCase().replace(/\s+/g, ' ')] || trimmed;
+                });
+
                 const hasSkill = itemSkills.some((s: string) => selectedSkills.includes(s));
                 if (!hasSkill) return false;
             }
 
-            if (selectedVerticals.length > 0 && !selectedVerticals.includes(item.vertical?.trim() || 'Unknown')) return false;
+            if (selectedVerticals.length > 0 && !selectedVerticals.includes(item.Domain?.trim() || 'Unknown')) return false;
 
             return true;
         });
@@ -352,7 +379,7 @@ export default function CandidateDashboard() {
             case 'Roles': setSelectedRoles(tempSelectedItems); break;
             case 'Locations': setSelectedLocations(tempSelectedItems); break;
             case 'Skills': setSelectedSkills(tempSelectedItems); break;
-            case 'Industry': setSelectedVerticals(tempSelectedItems); break;
+            case 'Domain': setSelectedVerticals(tempSelectedItems); break;
         }
         setActiveDropdown(null);
     };
@@ -364,7 +391,7 @@ export default function CandidateDashboard() {
             case 'Roles': setSelectedRoles([]); break;
             case 'Locations': setSelectedLocations([]); break;
             case 'Skills': setSelectedSkills([]); break;
-            case 'Industry': setSelectedVerticals([]); break;
+            case 'Domain': setSelectedVerticals([]); break;
         }
         setActiveDropdown(null);
     };
@@ -669,11 +696,11 @@ export default function CandidateDashboard() {
                     <Search size={16} />
                     <span>FILTERS:</span>
                 </div>
-                {renderFilterDropdown('Clients', masterChartData.clients, selectedClients, clientSearch, setClientSearch, 'Clients')}
+                {renderFilterDropdown('Companies', masterChartData.clients, selectedClients, clientSearch, setClientSearch, 'Clients')}
                 {renderFilterDropdown('Roles', masterChartData.roles, selectedRoles, roleSearch, setRoleSearch, 'Roles')}
                 {renderFilterDropdown('Locations', masterChartData.locations, selectedLocations, locationSearch, setLocationSearch, 'Locations')}
                 {renderFilterDropdown('Skills', masterChartData.skills, selectedSkills, skillSearch, setSkillSearch, 'Skills')}
-                {renderFilterDropdown('Industry', masterChartData.verticals, selectedVerticals, verticalSearch, setVerticalSearch, 'Industry')}
+                {renderFilterDropdown('Domain', masterChartData.verticals, selectedVerticals, verticalSearch, setVerticalSearch, 'Domain')}
 
                 <button
                     onClick={handleGlobalClear}
@@ -749,7 +776,7 @@ export default function CandidateDashboard() {
                 {/* Unique Clients (Filtered) */}
                 <div className="metric-card">
                     <div className="metric-content">
-                        <span className="metric-label">Unique Clients</span>
+                        <span className="metric-label">Unique Companies</span>
                         <div className="metric-value">{uniqueClients}</div>
                     </div>
                     <div className="metric-icon-container" style={{ background: 'linear-gradient(135deg, rgba(244, 63, 94, 0.2) 0%, rgba(244, 63, 94, 0.05) 100%)', color: '#f43f5e' }}>
@@ -764,17 +791,26 @@ export default function CandidateDashboard() {
                 <div className="glass-card">
                     <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
                         <div style={{ display: 'flex', alignItems: 'center' }}>
-                            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Top Clients</h2>
-                            <InfoTooltip text="Candidates grouped by their associated client companies." />
+                            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Top Companies</h2>
+                            <InfoTooltip text="Candidates grouped by their associated companies." />
                         </div>
-                        <p style={{ fontSize: '0.875rem', color: '#94a3b8', margin: '0.25rem 0 0 0' }}>Displaying top 5 clients by default</p>
+                        <p style={{ fontSize: '0.875rem', color: '#94a3b8', margin: '0.25rem 0 0 0' }}>Displaying top 5 companies by default</p>
                     </div>
                     <div className="chart-container">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={filteredChartData.clients.slice(0, 5)} layout="vertical" margin={{ left: 40, right: 40 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.grid.stroke} horizontal={true} vertical={true} />
                                 <XAxis type="number" stroke={chartStyles.axis.stroke} axisLine={false} tickLine={false} />
-                                <YAxis dataKey="name" type="category" stroke={chartStyles.axis.stroke} width={100} axisLine={false} tickLine={false} />
+                                <YAxis
+                                    dataKey="name"
+                                    type="category"
+                                    stroke={chartStyles.axis.stroke}
+                                    width={150}
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fontSize: 11 }}
+                                    tickFormatter={(value) => value.length > 20 ? `${value.substring(0, 20)}...` : value}
+                                />
                                 <Tooltip
                                     contentStyle={chartStyles.contentStyle}
                                     itemStyle={chartStyles.itemStyle}
@@ -923,12 +959,12 @@ export default function CandidateDashboard() {
             </div>
 
             <div className="dashboard-grid">
-                {/* Industry Breakdown (Vertical) Chart */}
+                {/* Domain Breakdown (Vertical) Chart */}
                 <div className="glass-card">
                     <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
                         <div style={{ display: 'flex', alignItems: 'center' }}>
-                            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Industry Breakdown</h2>
-                            <InfoTooltip text="Candidates categorized by industry verticals." />
+                            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Domain Breakdown</h2>
+                            <InfoTooltip text="Candidates categorized by Domain verticals." />
                         </div>
                         <p style={{ fontSize: '0.875rem', color: '#94a3b8', margin: '0.25rem 0 0 0' }}>Displaying top 5 industries by default</p>
                     </div>
@@ -963,11 +999,11 @@ export default function CandidateDashboard() {
                     </div>
                 </div>
 
-                {/* Domain (Department Type) Chart */}
+                {/* Domain (IT/Non IT) Chart */}
                 <div className="glass-card">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center' }}>
-                            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Domain Distribution</h2>
+                            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>IT/Non IT Distribution</h2>
                             <InfoTooltip text="Overview of candidates across different business domains." />
                         </div>
                     </div>
