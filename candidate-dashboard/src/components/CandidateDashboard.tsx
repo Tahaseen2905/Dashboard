@@ -609,6 +609,35 @@ export default function CandidateDashboard() {
     const uniqueRoles = filteredChartData.roles.length;
     const uniqueClients = filteredChartData.clients.length;
 
+    const renderCustomLegend = (props: any) => {
+        const { payload } = props;
+        return (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, maxHeight: '320px', overflowY: 'auto' }}>
+                {payload.map((entry: any, index: number) => (
+                    <li key={`item-${index}`} style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '8px',
+                        marginBottom: '8px',
+                        fontSize: '0.8rem',
+                        color: isDarkMode ? '#cbd5e1' : '#475569',
+                        cursor: 'default'
+                    }}>
+                        <span style={{
+                            width: '10px',
+                            height: '10px',
+                            borderRadius: '50%',
+                            backgroundColor: entry.color,
+                            marginTop: '5px',
+                            flexShrink: 0
+                        }} />
+                        <span style={{ flex: 1, lineHeight: '1.3' }}>{entry.value}</span>
+                    </li>
+                ))}
+            </ul>
+        );
+    };
+
     if (error) return (
         <div style={{ padding: '2rem', textAlign: 'center', color: '#f87171' }}>
             <h2>Error Loading Data</h2>
@@ -862,12 +891,10 @@ export default function CandidateDashboard() {
                                     layout="vertical"
                                     verticalAlign="middle"
                                     align="right"
+                                    content={renderCustomLegend}
                                     wrapperStyle={{
-                                        width: '30%',
-                                        lineHeight: '24px',
-                                        maxHeight: '320px',
-                                        overflowY: 'auto',
-                                        paddingRight: '10px'
+                                        width: '35%',
+                                        paddingLeft: '10px'
                                     }}
                                 />
                             </PieChart>
@@ -1043,8 +1070,11 @@ export default function CandidateDashboard() {
                                     layout="vertical"
                                     verticalAlign="middle"
                                     align="right"
-                                    wrapperStyle={{ width: '30%', right: 0 }}
-                                    iconType="circle"
+                                    content={renderCustomLegend}
+                                    wrapperStyle={{
+                                        width: '35%',
+                                        paddingLeft: '10px'
+                                    }}
                                 />
                             </PieChart>
                         </ResponsiveContainer>
