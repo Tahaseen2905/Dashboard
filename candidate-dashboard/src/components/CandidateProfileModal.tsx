@@ -1,15 +1,18 @@
-import { X, User, MapPin, Briefcase, Building, Layers, GitBranch, Code } from 'lucide-react';
+import { X, User, MapPin, Briefcase, Layers, GitBranch, Code, Building } from 'lucide-react';
 
 interface CandidateData {
-    'Employee ID': string;
-    'Candidate Name': string;
-    'Location': string;
-    'skills': string;
-    'client': string;
-    'roleDesignation': string;
-    'vertical': string;
-    'department type': string;
-    'experienceYears'?: string | number;
+    'employee_id': string;
+    'full_name': string;
+    'candidate_city': string;
+    'designation': string;
+    'client_address': string;
+    'client_contact_address': string;
+    'skill': string;
+    'Domain': string;
+    'IT/Non IT': string;
+    'gender': string;
+    'notice_period_from_employee': string;
+    'company_name': string;
     [key: string]: any;
 }
 
@@ -104,15 +107,15 @@ export default function CandidateProfileModal({ isOpen, onClose, candidate }: Ca
                             border: '2px solid rgba(255,255,255,0.4)',
                             boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
                         }}>
-                            {candidate['Candidate Name']?.charAt(0) || 'U'}
+                            {candidate['full_name']?.charAt(0) || 'U'}
                         </div>
                         <div>
                             <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>
-                                {candidate['Candidate Name']}
+                                {candidate['full_name']}
                             </h2>
                             <p style={{ margin: '0.25rem 0 0 0', opacity: 0.9, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <span style={{ background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '4px' }}>
-                                    ID: {candidate['Employee ID']}
+                                    ID: {candidate['employee_id']}
                                 </span>
                             </p>
                         </div>
@@ -143,40 +146,49 @@ export default function CandidateProfileModal({ isOpen, onClose, candidate }: Ca
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <div style={infoSectionStyle}>
                             <div style={labelStyle}><Briefcase size={14} /> ROLE</div>
-                            <div style={valueStyle}>{candidate['roleDesignation']}</div>
+                            <div style={valueStyle}>{candidate['designation']}</div>
                         </div>
                         <div style={infoSectionStyle}>
                             <div style={labelStyle}><MapPin size={14} /> LOCATION</div>
-                            <div style={valueStyle}>{candidate['Location']}</div>
+                            <div style={valueStyle}>{candidate['candidate_city']}</div>
                         </div>
-                        <div style={infoSectionStyle}>
-                            <div style={labelStyle}><Building size={14} /> CLIENT</div>
-                            <div style={valueStyle}>{candidate['client']}</div>
-                        </div>
+
                         <div style={infoSectionStyle}>
                             <div style={labelStyle}><User size={14} /> EXPERIENCE</div>
-                            <div style={valueStyle}>{candidate['experienceYears'] || 'N/A'} Years</div>
+                            <div style={valueStyle}>{candidate['total_experience'] || 'N/A'}</div>
+                        </div>
+                        <div style={infoSectionStyle}>
+                            <div style={labelStyle}><User size={14} /> GENDER</div>
+                            <div style={valueStyle}>{candidate['gender'] || '-'}</div>
+                        </div>
+                        <div style={infoSectionStyle}>
+                            <div style={labelStyle}><Briefcase size={14} /> NOTICE PERIOD</div>
+                            <div style={valueStyle}>{candidate['notice_period_from_employee'] ? `${candidate['notice_period_from_employee']} Days` : '-'}</div>
+                        </div>
+                        <div style={infoSectionStyle}>
+                            <div style={labelStyle}><Building size={14} /> CURRENT COMPANY</div>
+                            <div style={valueStyle}>{candidate['company_name'] || '-'}</div>
                         </div>
                     </div>
 
                     {/* Additional Details */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <div style={infoSectionStyle}>
-                            <div style={labelStyle}><Layers size={14} /> INDUSTRY</div>
-                            <div style={valueStyle}>{candidate['vertical']}</div>
+                            <div style={labelStyle}><Layers size={14} /> IT/Non IT</div>
+                            <div style={valueStyle}>{candidate['IT/Non IT']}</div>
                         </div>
                         <div style={infoSectionStyle}>
                             <div style={labelStyle}><GitBranch size={14} /> DOMAIN</div>
-                            <div style={valueStyle}>{candidate['department type']}</div>
+                            <div style={valueStyle}>{candidate['Domain']}</div>
                         </div>
                     </div>
 
                     {/* Skills Section */}
-                    {candidate['skills'] && (
+                    {candidate['skill'] && (
                         <div style={{ ...infoSectionStyle, marginTop: '0.5rem' }}>
                             <div style={{ ...labelStyle, marginBottom: '0.75rem' }}><Code size={14} /> TOP SKILLS</div>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                {candidate['skills'].split(',').map((skill, i) => (
+                                {candidate['skill'].split(',').map((skill, i) => (
                                     <span key={i} style={{
                                         background: 'linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%)',
                                         color: '#1e40af',

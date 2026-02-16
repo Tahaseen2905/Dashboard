@@ -3,19 +3,22 @@ import * as XLSX from 'xlsx';
 import { Search, Sun, Moon, ArrowLeft, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import j2wLogo from '../assets/j2w.svg';
-import ClientDetailsModal from './ClientDetailsModal';
 import CandidateProfileModal from './CandidateProfileModal';
 import DashboardChatbot from './DashboardChatbot';
 
 interface CandidateData {
-    'Employee ID': string;
-    'Candidate Name': string;
-    'Location': string;
-    'skills': string;
-    'client': string;
-    'roleDesignation': string;
-    'vertical': string;
-    'department type': string;
+    'employee_id': string;
+    'full_name': string;
+    'candidate_city': string;
+    'designation': string;
+    'client_address': string;
+    'client_contact_address': string;
+    'skill': string;
+    'Domain': string;
+    'IT/Non IT': string;
+    'gender': string;
+    'notice_period_from_employee': string;
+    'company_name': string;
     [key: string]: any;
 }
 
@@ -31,12 +34,9 @@ export default function CandidateDetails() {
 
     const navigate = useNavigate();
 
-    const [selectedClient, setSelectedClient] = useState<string | null>(null);
     const [selectedCandidate, setSelectedCandidate] = useState<CandidateData | null>(null);
 
-    const handleClientClick = (client: string) => {
-        setSelectedClient(client);
-    };
+
 
     const handleCandidateClick = (candidate: CandidateData) => {
         setSelectedCandidate(candidate);
@@ -57,7 +57,7 @@ export default function CandidateDetails() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await fetch(`/align360_highlighted_replaced_with_NA.xlsx?v=${Date.now()}`);
+                const response = await fetch(`/final_excel.xlsx?v=${Date.now()}`);
                 if (!response.ok) throw new Error('Failed to fetch Excel file');
 
                 const arrayBuffer = await response.arrayBuffer();
@@ -193,16 +193,16 @@ export default function CandidateDetails() {
                                 <th>Name</th>
                                 <th>Location</th>
                                 <th>Role</th>
-                                <th>Client</th>
+                                <th>Company</th>
                                 <th>Skills</th>
-                                <th>Industry Type</th>
                                 <th>Domain</th>
+                                <th>IT/Non IT</th>
                             </tr>
                         </thead>
                         <tbody>
                             {paginatedData.map((candidate, index) => (
                                 <tr key={index}>
-                                    <td style={{ fontWeight: 500 }}>{candidate['Employee ID']}</td>
+                                    <td style={{ fontWeight: 500 }}>{candidate['employee_id'] || '-'}</td>
                                     <td
                                         onClick={() => handleCandidateClick(candidate)}
                                         style={{
@@ -214,14 +214,14 @@ export default function CandidateDetails() {
                                     >
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.875rem' }}>
-                                                {candidate['Candidate Name']?.charAt(0) || 'U'}
+                                                {candidate['full_name']?.charAt(0) || 'U'}
                                             </div>
                                             <span style={{ fontWeight: 600, color: isDarkMode ? '#e2e8f0' : '#1e293b' }}>
-                                                {candidate['Candidate Name']}
+                                                {candidate['full_name'] || '-'}
                                             </span>
                                         </div>
                                     </td>
-                                    <td>{candidate['Location']}</td>
+                                    <td>{candidate['candidate_city'] || '-'}</td>
                                     <td>
                                         <span style={{
                                             background: isDarkMode ? 'rgba(59, 130, 246, 0.2)' : '#e0f2fe',
@@ -231,45 +231,37 @@ export default function CandidateDetails() {
                                             fontSize: '0.75rem',
                                             fontWeight: 600
                                         }}>
-                                            {candidate['roleDesignation']}
+                                            {candidate['designation'] || '-'}
                                         </span>
                                     </td>
-                                    <td
-                                        onClick={() => handleClientClick(candidate['client'])}
-                                        style={{
-                                            cursor: 'pointer',
-                                            color: '#3b82f6',
-                                            fontWeight: 500,
-                                            textDecoration: 'underline',
-                                            textUnderlineOffset: '2px'
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'}
-                                        onMouseLeave={(e) => e.currentTarget.style.color = '#3b82f6'}
-                                    >
-                                        {candidate['client']}
-                                    </td>
+                                    <td>{candidate['company_name'] || '-'}</td>
+
                                     <td>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-                                            {candidate['skills']?.split(',').slice(0, 3).map((skill, i) => (
-                                                <span key={i} style={{
-                                                    background: isDarkMode ? 'rgba(52, 211, 153, 0.1)' : '#dcfce7',
-                                                    color: isDarkMode ? '#34d399' : '#15803d',
-                                                    padding: '0.125rem 0.5rem',
-                                                    borderRadius: '4px',
-                                                    fontSize: '0.75rem'
-                                                }}>
-                                                    {skill.trim()}
-                                                </span>
-                                            ))}
-                                            {(candidate['skills']?.split(',').length || 0) > 3 && (
-                                                <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                                                    +{(candidate['skills']?.split(',').length || 0) - 3}
-                                                </span>
-                                            )}
-                                        </div>
+                                        {candidate['skill'] ? (
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                                                {candidate['skill']?.split(',').slice(0, 3).map((skill, i) => (
+                                                    <span key={i} style={{
+                                                        background: isDarkMode ? 'rgba(52, 211, 153, 0.1)' : '#dcfce7',
+                                                        color: isDarkMode ? '#34d399' : '#15803d',
+                                                        padding: '0.125rem 0.5rem',
+                                                        borderRadius: '4px',
+                                                        fontSize: '0.75rem'
+                                                    }}>
+                                                        {skill.trim()}
+                                                    </span>
+                                                ))}
+                                                {(candidate['skill']?.split(',').length || 0) > 3 && (
+                                                    <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                                                        +{(candidate['skill']?.split(',').length || 0) - 3}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <span>-</span>
+                                        )}
                                     </td>
-                                    <td>{candidate['vertical']}</td>
-                                    <td>{candidate['department type']}</td>
+                                    <td>{candidate['Domain'] || '-'}</td>
+                                    <td>{candidate['IT/Non IT'] || '-'}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -347,12 +339,7 @@ export default function CandidateDetails() {
                 </div>
             </div>
 
-            <ClientDetailsModal
-                isOpen={!!selectedClient}
-                onClose={() => setSelectedClient(null)}
-                clientName={selectedClient}
-                candidates={data.filter(c => c.client === selectedClient)}
-            />
+
 
             <CandidateProfileModal
                 isOpen={!!selectedCandidate}

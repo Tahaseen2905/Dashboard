@@ -1,14 +1,15 @@
 import { X, Search } from 'lucide-react';
 
 interface CandidateData {
-    'Employee ID': string;
-    'Candidate Name': string;
-    'Location': string;
-    'skills': string;
-    'client': string;
-    'roleDesignation': string;
-    'vertical': string;
-    'department type': string;
+    'employee_id': string;
+    'full_name': string;
+    'candidate_city': string;
+    'designation': string;
+    'client_address': string;
+    'client_contact_address': string;
+    'skill': string;
+    'Domain': string;
+    'IT/Non IT': string;
     [key: string]: any;
 }
 
@@ -115,10 +116,10 @@ export default function ClientDetailsModal({ isOpen, onClose, clientName, candid
                             <tbody>
                                 {candidates.map((candidate, idx) => (
                                     <tr key={idx} style={{ background: 'rgba(0,0,0,0.02)' }}>
-                                        <td style={{ padding: '0.75rem', fontWeight: 500 }}>{candidate['Candidate Name']}</td>
-                                        <td style={{ padding: '0.75rem' }}>{candidate['roleDesignation']}</td>
-                                        <td style={{ padding: '0.75rem' }}>{candidate['Location']}</td>
-                                        <td style={{ padding: '0.75rem' }}>{candidate['experienceYears'] || 'N/A'}</td>
+                                        <td style={{ padding: '0.75rem', fontWeight: 500 }}>{candidate['full_name']}</td>
+                                        <td style={{ padding: '0.75rem' }}>{candidate['designation']}</td>
+                                        <td style={{ padding: '0.75rem' }}>{candidate['candidate_city']}</td>
+                                        <td style={{ padding: '0.75rem' }}>{candidate['total_experience'] || 'N/A'}</td>
                                     </tr>
                                 ))}
                                 {candidates.length === 0 && (
